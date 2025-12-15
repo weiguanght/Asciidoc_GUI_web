@@ -10,6 +10,7 @@ import {
 import { Button } from './ui/Button';
 import { useEditorStore } from '../store/useEditorStore';
 import { ViewMode } from '../types';
+import { adocToHtml } from '../lib/asciidoc';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -168,34 +169,85 @@ const ImageDialog: React.FC<{
 };
 
 export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
-  const { toggleViewMode, viewMode, sourceContent, importFile, toolbarVisible } = useEditorStore();
+  const { toggleViewMode, viewMode, sourceContent, importFile, toolbarVisible, darkMode, files, activeFileId } = useEditorStore();
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+
+  const activeFile = files.find(f => f.id === activeFileId);
 
   if (!editor) return null;
 
-  const handleExport = () => {
+  const handleExportAdoc = () => {
+    const fileName = activeFile?.name || 'document.adoc';
     const blob = new Blob([sourceContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'document.adoc';
+    link.download = fileName;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setExportMenuOpen(false);
+  };
+
+  const handleExportHtml = () => {
+    const baseName = activeFile?.name?.replace('.adoc', '') || 'document';
+    const html = adocToHtml(sourceContent);
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${baseName}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+    code { font-family: 'JetBrains Mono', monospace; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+    th { background: #f5f5f5; }
+    blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; margin-left: 0; color: #666; }
+    img { max-width: 100%; height: auto; }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = baseName + '.html';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setExportMenuOpen(false);
   };
 
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.adoc,.txt';
+    input.accept = '.adoc,.txt,.html,.htm';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          const content = event.target?.result as string;
+          let content = event.target?.result as string;
           if (content) {
-            importFile(file.name, content);
+            // 如果是 HTML 文件，提取纯文本
+            if (file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(content, 'text/html');
+              content = doc.body.textContent || content;
+            }
+            const fileName = file.name.replace(/\.(html|htm)$/, '.adoc');
+            importFile(fileName, content);
           }
         };
         reader.readAsText(file);
@@ -233,8 +285,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
       {/* 桌面端始终显示，移动端根据 toolbarVisible 显示 */}
       <div className={`
         toolbar-container
-        h-14 border-b border-gray-200 flex items-center justify-between px-4 bg-white sticky top-0 z-20 overflow-x-auto no-scrollbar
+        h-14 border-b flex items-center justify-between px-4 sticky top-0 z-40 overflow-visible no-scrollbar
         transition-all duration-300 ease-in-out
+        ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}
         ${toolbarVisible ? 'max-h-14 opacity-100' : 'max-h-0 opacity-0 overflow-hidden border-b-0 md:max-h-14 md:opacity-100 md:border-b'}
       `}>
         <div className="flex items-center gap-1">
@@ -296,21 +349,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
           <div className="w-px h-6 bg-gray-200 mx-1"></div>
           <div className="flex items-center gap-1 mx-1">
             <div className="relative">
-              <button
-                type="button"
-                className="flex items-center cursor-pointer p-1.5 hover:bg-gray-100 rounded"
-                title="Text Color"
-                onClick={() => {
-                  const colorInput = document.getElementById('text-color-input') as HTMLInputElement;
-                  colorInput?.click();
-                }}
-              >
+              <div className="flex items-center p-1.5 hover:bg-gray-100 rounded" title="Text Color">
                 <Palette size={18} className="text-gray-600" />
-              </button>
+              </div>
               <input
                 id="text-color-input"
                 type="color"
-                className="absolute w-0 h-0 opacity-0 pointer-events-none"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={(event) => {
                   editor.chain().focus().setColor((event.target as HTMLInputElement).value).run();
                 }}
@@ -318,21 +363,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
               />
             </div>
             <div className="relative">
-              <button
-                type="button"
-                className="flex items-center cursor-pointer p-1.5 hover:bg-gray-100 rounded"
-                title="Background Color"
-                onClick={() => {
-                  const colorInput = document.getElementById('highlight-color-input') as HTMLInputElement;
-                  colorInput?.click();
-                }}
-              >
+              <div className="flex items-center p-1.5 hover:bg-gray-100 rounded" title="Background Color">
                 <Highlighter size={18} className="text-yellow-500" />
-              </button>
+              </div>
               <input
                 id="highlight-color-input"
                 type="color"
-                className="absolute w-0 h-0 opacity-0 pointer-events-none"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 defaultValue="#fef08a"
                 onChange={(event) => {
                   editor.chain().focus().toggleHighlight({ color: (event.target as HTMLInputElement).value }).run();
@@ -432,69 +469,56 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
           >
             <ImageIcon size={18} />
           </Button>
-          <Button
-            variant="toolbar"
-            onClick={addTable}
-            title="Insert Table"
-          >
-            <TableIcon size={18} />
-          </Button>
 
-          {/* Table Operations - only show when in a table */}
-          {editor.isActive('table') && (
-            <>
-              <div className="w-px h-6 bg-gray-200 mx-1"></div>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().mergeCells().run()}
-                title="Merge Cells"
-              >
-                <Combine size={18} />
-              </Button>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().splitCell().run()}
-                title="Split Cell"
-              >
-                <SplitSquareHorizontal size={18} />
-              </Button>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().addRowAfter().run()}
-                title="Add Row"
-              >
-                <RowsIcon size={18} className="text-green-600" />
-              </Button>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().deleteRow().run()}
-                title="Delete Row"
-              >
-                <RowsIcon size={18} className="text-red-500" />
-              </Button>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().addColumnAfter().run()}
-                title="Add Column"
-              >
-                <ColumnsIcon size={18} className="text-green-600" />
-              </Button>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().deleteColumn().run()}
-                title="Delete Column"
-              >
-                <ColumnsIcon size={18} className="text-red-500" />
-              </Button>
-              <Button
-                variant="toolbar"
-                onClick={() => editor.chain().focus().deleteTable().run()}
-                title="Delete Table"
-              >
-                <Trash2 size={18} className="text-red-500" />
-              </Button>
-            </>
-          )}
+          {/* Table Grid Selector */}
+          <div className="relative">
+            <Button
+              variant="toolbar"
+              onClick={() => setTableMenuOpen(!tableMenuOpen)}
+              active={editor.isActive('table') || tableMenuOpen}
+              title="Insert Table"
+            >
+              <TableIcon size={18} />
+            </Button>
+            {tableMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setTableMenuOpen(false)} />
+                <div className={`absolute left-0 top-full mt-1 p-3 rounded-lg shadow-xl z-50 ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'
+                  }`}>
+                  <div className={`text-xs mb-2 text-center ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Select table size
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {[1, 2, 3, 4, 5].map((rows) => (
+                      <div key={rows} className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((cols) => (
+                          <button
+                            key={`${rows}-${cols}`}
+                            onClick={() => {
+                              editor.chain().focus().insertTable({
+                                rows: rows,
+                                cols: cols,
+                                withHeaderRow: true
+                              }).run();
+                              setTableMenuOpen(false);
+                            }}
+                            className={`min-w-[24px] min-h-[24px] w-6 h-6 border rounded-sm transition-colors ${darkMode
+                              ? 'border-slate-500 hover:bg-blue-600 hover:border-blue-500 bg-slate-600'
+                              : 'border-gray-300 hover:bg-blue-500 hover:border-blue-400 bg-gray-100'
+                              }`}
+                            title={`${rows} × ${cols}`}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className={`text-xs mt-2 text-center ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Click to insert
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <Button
             variant="toolbar"
             onClick={() => setLinkDialogOpen(true)}
@@ -532,11 +556,112 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
             <Upload size={16} /> Import
           </Button>
 
-          <Button variant="primary" onClick={handleExport} className="gap-2 flex-shrink-0">
-            <Download size={16} /> Export
-          </Button>
+          <div className="relative">
+            <Button
+              variant="primary"
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className="gap-2 flex-shrink-0"
+            >
+              <Download size={16} /> Export <ChevronDown size={14} />
+            </Button>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                <div className={`absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[140px] ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'
+                  }`}>
+                  <button
+                    onClick={handleExportAdoc}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                  >
+                    Export as .adoc
+                  </button>
+                  <button
+                    onClick={handleExportHtml}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                  >
+                    Export as .html
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* 二级工具栏 - 表格操作 */}
+      {editor.isActive('table') && (
+        <div className={`
+          secondary-toolbar
+          h-10 border-b flex items-center px-4 gap-2
+          transition-all duration-200 ease-in-out
+          ${darkMode ? 'bg-slate-700 border-slate-600' : 'bg-gray-50 border-gray-200'}
+        `}>
+          <span className={`text-xs font-medium mr-2 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+            Table:
+          </span>
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().mergeCells().run()}
+            title="Merge Cells"
+          >
+            <Combine size={16} />
+          </Button>
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().splitCell().run()}
+            title="Split Cell"
+          >
+            <SplitSquareHorizontal size={16} />
+          </Button>
+
+          <div className={`w-px h-5 mx-1 ${darkMode ? 'bg-slate-600' : 'bg-gray-300'}`} />
+
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            title="Add Row"
+          >
+            <Plus size={14} className="text-green-500" />
+            <RowsIcon size={16} />
+          </Button>
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            title="Delete Row"
+          >
+            <Minus size={14} className="text-red-500" />
+            <RowsIcon size={16} />
+          </Button>
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            title="Add Column"
+          >
+            <Plus size={14} className="text-green-500" />
+            <ColumnsIcon size={16} />
+          </Button>
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            title="Delete Column"
+          >
+            <Minus size={14} className="text-red-500" />
+            <ColumnsIcon size={16} />
+          </Button>
+
+          <div className={`w-px h-5 mx-1 ${darkMode ? 'bg-slate-600' : 'bg-gray-300'}`} />
+
+          <Button
+            variant="toolbar"
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            title="Delete Table"
+          >
+            <Trash2 size={16} className="text-red-500" />
+          </Button>
+        </div>
+      )}
 
       <LinkDialog
         isOpen={linkDialogOpen}

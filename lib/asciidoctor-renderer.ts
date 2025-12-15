@@ -63,20 +63,119 @@ export const adocToHtml = (adoc: string): string => {
             }
         );
 
+        // 解析源码行号映射
+        const lineMap = buildSourceLineMap(adoc);
+
         // 给每个块级元素添加 data-line 属性用于同步定位
-        let lineNumber = 0;
-        html = html.replace(/<(h[1-6]|p|pre|table|ul|ol|blockquote|div|section)([^>]*)>/gi,
-            (match, tag, attrs) => {
-                lineNumber++;
-                return `<${tag}${attrs} data-line="${lineNumber}">`;
-            }
-        );
+        html = addDataLineAttributes(html, lineMap);
 
         return html;
     } catch (error) {
         console.error('Asciidoctor conversion error:', error);
         return `<div class="error">渲染错误: ${error}</div>`;
     }
+};
+
+/**
+ * 构建源码内容到行号的映射
+ * @param adoc AsciiDoc 源码
+ * @returns 内容到行号的映射
+ */
+const buildSourceLineMap = (adoc: string): Map<string, number> => {
+    const lines = adoc.split('\n');
+    const lineMap = new Map<string, number>();
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // 提取标题内容
+        const headingMatch = line.match(/^(=+)\s+(.+)$/);
+        if (headingMatch) {
+            const content = headingMatch[2].trim();
+            if (!lineMap.has(content)) {
+                lineMap.set(content, i + 1);
+            }
+            continue;
+        }
+
+        // 提取列表项内容
+        const listMatch = line.match(/^[\*\.\-]\s+(.+)$/);
+        if (listMatch) {
+            const content = listMatch[1].trim();
+            // 对列表项使用带前缀的 key 以避免冲突
+            const key = `li:${content}`;
+            if (!lineMap.has(key)) {
+                lineMap.set(key, i + 1);
+            }
+            continue;
+        }
+
+        // 存储普通段落内容（取前50个字符作为 key）
+        if (line.length > 0 && !line.startsWith('[') && !line.startsWith('|') && !line.startsWith('----')) {
+            const key = line.substring(0, Math.min(50, line.length));
+            if (!lineMap.has(key)) {
+                lineMap.set(key, i + 1);
+            }
+        }
+    }
+
+    return lineMap;
+};
+
+/**
+ * 给 HTML 元素添加 data-line 属性
+ * @param html 渲染后的 HTML
+ * @param lineMap 内容到行号的映射
+ * @returns 添加了 data-line 属性的 HTML
+ */
+const addDataLineAttributes = (html: string, lineMap: Map<string, number>): string => {
+    // 处理标题 (h1-h6)
+    html = html.replace(/<(h[1-6])([^>]*)>([^<]+)<\/\1>/gi, (match, tag, attrs, content) => {
+        const textContent = content.replace(/<[^>]+>/g, '').trim();
+        const line = lineMap.get(textContent);
+        if (line) {
+            return `<${tag}${attrs} data-line="${line}">${content}</${tag}>`;
+        }
+        return match;
+    });
+
+    // 处理段落 (p)
+    html = html.replace(/<p([^>]*)>([^<]+)<\/p>/gi, (match, attrs, content) => {
+        const textContent = content.replace(/<[^>]+>/g, '').trim();
+        const key = textContent.substring(0, Math.min(50, textContent.length));
+        const line = lineMap.get(key);
+        if (line) {
+            return `<p${attrs} data-line="${line}">${content}</p>`;
+        }
+        return match;
+    });
+
+    // 处理列表项 (li)
+    html = html.replace(/<li([^>]*)>(?:<p>)?([^<]+)(?:<\/p>)?<\/li>/gi, (match, attrs, content) => {
+        const textContent = content.replace(/<[^>]+>/g, '').trim();
+        const key = `li:${textContent}`;
+        const line = lineMap.get(key);
+        if (line) {
+            if (match.includes('<p>')) {
+                return `<li${attrs} data-line="${line}"><p>${content}</p></li>`;
+            }
+            return `<li${attrs} data-line="${line}">${content}</li>`;
+        }
+        return match;
+    });
+
+    // 为未匹配的块级元素添加默认 data-line (使用位置索引)
+    let blockIndex = 0;
+    html = html.replace(/<(pre|table|ul|ol|blockquote|div|section)([^>]*)>/gi, (match, tag, attrs) => {
+        if (!attrs.includes('data-line')) {
+            blockIndex++;
+            return `<${tag}${attrs} data-line="block-${blockIndex}">`;
+        }
+        return match;
+    });
+
+    return html;
 };
 
 /**

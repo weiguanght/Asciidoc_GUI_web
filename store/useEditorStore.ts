@@ -29,6 +29,9 @@ interface EditorState {
   sidebarVisible: boolean;
   toolbarVisible: boolean;
 
+  // 主题状态
+  darkMode: boolean;
+
   // Actions
   setFiles: (files: FileItem[]) => void;
   setActiveFile: (id: string) => void;
@@ -36,6 +39,8 @@ interface EditorState {
   setSourceContent: (content: string, source: 'EDITOR' | 'SOURCE') => void;
   createFile: (name: string) => void;
   importFile: (name: string, content: string) => void;
+  renameFile: (id: string, newName: string) => void;
+  deleteFile: (id: string) => void;
 
   // 同步操作
   setHighlightLine: (line: number, source: 'editor' | 'source') => void;
@@ -46,6 +51,9 @@ interface EditorState {
   toggleSidebar: () => void;
   toggleToolbar: () => void;
   closeSidebar: () => void;
+
+  // 主题操作
+  toggleDarkMode: () => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -61,6 +69,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   syncToLine: null,
   sidebarVisible: false,
   toolbarVisible: false,
+  darkMode: false,
 
   setFiles: (files) => set({ files }),
 
@@ -122,6 +131,27 @@ export const useEditorStore = create<EditorState>((set) => ({
     };
   }),
 
+  renameFile: (id, newName) => set((state) => {
+    const updatedFiles = state.files.map(f =>
+      f.id === id ? { ...f, name: newName.endsWith('.adoc') ? newName : `${newName}.adoc`, lastModified: Date.now() } : f
+    );
+    return { files: updatedFiles };
+  }),
+
+  deleteFile: (id) => set((state) => {
+    const updatedFiles = state.files.filter(f => f.id !== id);
+    // 如果删除的是当前激活的文件，切换到第一个文件
+    if (state.activeFileId === id) {
+      const newActiveFile = updatedFiles[0];
+      return {
+        files: updatedFiles,
+        activeFileId: newActiveFile?.id || null,
+        sourceContent: newActiveFile?.content || '',
+      };
+    }
+    return { files: updatedFiles };
+  }),
+
   // 设置高亮行并触发另一侧同步
   setHighlightLine: (line, source) => set(() => {
     const oppositeSource = source === 'editor' ? 'source' : 'editor';
@@ -139,4 +169,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
   toggleToolbar: () => set((state) => ({ toolbarVisible: !state.toolbarVisible })),
   closeSidebar: () => set({ sidebarVisible: false }),
+
+  // 主题操作
+  toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
 }));

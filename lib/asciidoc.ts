@@ -128,32 +128,96 @@ const renderTextContent = (content?: AsciiDocNode[]): string => {
 };
 
 /**
- * 渲染表格
+ * 渲染表格（支持合并单元格和表格标题）
  */
 const renderTable = (node: AsciiDocNode): string => {
-  let tableContent = '';
-  let isFirstRow = true;
+  if (!node.content || node.content.length === 0) return '';
 
-  if (node.content) {
-    node.content.forEach((row) => {
-      if (row.type === 'tableRow' && row.content) {
-        tableContent += '\n';
-        row.content.forEach((cell) => {
-          const cellText = cell.content?.map((p: any) =>
-            renderTextContent(p.content)
-          ).join(' ') || '';
-          tableContent += `| ${cellText} `;
-        });
+  // 检查是否有表格标题 (tableCaption)
+  let captionText = '';
+  const filteredContent = node.content.filter((child) => {
+    if (child.type === 'tableCaption') {
+      captionText = renderTextContent(child.content);
+      return false;
+    }
+    return true;
+  });
 
-        // 在第一行后添加分隔符
-        if (isFirstRow) {
-          isFirstRow = false;
-        }
-      }
-    });
+  // 收集所有行的数据，包括合并信息
+  interface CellData {
+    text: string;
+    colspan: number;
+    rowspan: number;
   }
 
-  return `[cols="1,1,1", options="header"]\n|===${tableContent}\n|===\n\n`;
+  const rows: CellData[][] = [];
+  let maxCols = 0;
+
+  filteredContent.forEach((row) => {
+    if (row.type === 'tableRow' && row.content) {
+      const rowCells: CellData[] = [];
+      let colCount = 0;
+
+      row.content.forEach((cell) => {
+        const cellText = cell.content?.map((p: any) =>
+          renderTextContent(p.content)
+        ).join(' ') || '';
+
+        const colspan = cell.attrs?.colspan || 1;
+        const rowspan = cell.attrs?.rowspan || 1;
+
+        rowCells.push({
+          text: cellText,
+          colspan,
+          rowspan
+        });
+
+        colCount += colspan;
+      });
+
+      rows.push(rowCells);
+      maxCols = Math.max(maxCols, colCount);
+    }
+  });
+
+  if (rows.length === 0) return '';
+
+  // 生成列定义
+  const colDef = Array(maxCols).fill('1').join(',');
+
+  // 生成表格内容
+  let tableOutput = '';
+  rows.forEach((row, rowIndex) => {
+    tableOutput += '\n';
+
+    row.forEach((cell) => {
+      // 构建合并单元格前缀
+      // AsciiDoc 语法: colspan.rowspan+| (例如 2.3+| 表示横跨2列、纵跨3行)
+      let prefix = '';
+
+      if (cell.colspan > 1 && cell.rowspan > 1) {
+        // 同时有 colspan 和 rowspan
+        prefix = `${cell.colspan}.${cell.rowspan}+`;
+      } else if (cell.colspan > 1) {
+        // 只有 colspan
+        prefix = `${cell.colspan}+`;
+      } else if (cell.rowspan > 1) {
+        // 只有 rowspan
+        prefix = `.${cell.rowspan}+`;
+      }
+
+      tableOutput += `${prefix}| ${cell.text} `;
+    });
+
+    // 标题行后添加空行（AsciiDoc 语法要求）
+    if (rowIndex === 0) {
+      tableOutput += '\n';
+    }
+  });
+
+  // 生成 AsciiDoc 表格
+  const captionLine = captionText ? `.${captionText}\n` : '';
+  return `${captionLine}[cols="${colDef}", options="header"]\n|===${tableOutput}\n|===\n\n`;
 };
 
 /**

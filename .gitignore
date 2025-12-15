@@ -1,0 +1,30 @@
+# 1. 依赖包 (须屏蔽)
+node_modules/
+
+# 2. 打包构建产物 (须屏蔽)
+# 也就是你运行 npm run build 后生成的文件夹，不需要提交
+dist/
+dist-ssr/
+
+# 3.Sx 环境变量文件 (安全关键)
+# .env.local 通常包含 API Key 等敏感信息，绝对不能提交！
+.env.local
+.env.*.local
+
+# 4.JS 系统生成的垃圾文件 (保持仓库整洁)
+.DS_Store
+Thumbs.db
+
+# 5.NX npm 错误日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 6. 编辑器配置 (推荐屏蔽)
+.idea/
+.vscode/
+*.Suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?

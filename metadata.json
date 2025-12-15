@@ -1,0 +1,5 @@
+{
+  "name": "AsciiDoc WYSIWYG Editor",
+  "description": "A modern, dual-view AsciiDoc editor featuring real-time WYSIWYG editing synced with source code.",
+  "requestFramePermissions": []
+}

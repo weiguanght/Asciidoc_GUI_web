@@ -1,0 +1,97 @@
+= AsciiDoc GUI Web
+:toc: macro
+:toc-title: 目录
+:icons: font
+:source-highlighter: highlight.js
+:imagesdir: images
+
+基于 Web 的现代化所见即所得 (WYSIWYG) AsciiDoc 编辑器。该项目结合了类似 Word 的富文本编辑体验与 AsciiDoc 的强大功能，提供精确的双向同步和源码编辑能力。
+
+image::1.png[AsciiDoc GUI Web 编辑器主界面, align="center"]
+
+image:https://img.shields.io/badge/License-MIT-blue.svg[License]
+image:https://img.shields.io/badge/React-19.0-61dafb.svg[React]
+image:https://img.shields.io/badge/TypeScript-5.0-blue.svg[TypeScript]
+image:https://img.shields.io/badge/Vite-6.0-646cff.svg[Vite]
+
+toc::[]
+
+== 项目简介
+
+AsciiDoc GUI Web 是一个纯前端的可视化编辑器，旨在降低 AsciiDoc 的使用门槛，同时保留对底层源码的完全控制。它采用了 Tiptap 作为富文本引擎，并集成了 Asciidoctor.js 以确保对标准语法的完整支持。
+
+== 核心功能展示
+
+=== 1. 所见即所得 (WYSIWYG)
+提供现代化的书写体验，支持类似 Word 的操作逻辑。
+* **丰富组件**：支持插入图片、图标、表格、代码块。
+* [cite_start]**样式调整**：支持字体格式（加粗/斜体/下划线）、字体颜色、背景高亮 [cite: 207, 270]。
+* [cite_start]**表格增强**：支持列宽拖拽调整、合并单元格及行/列操作 [cite: 206, 301]。
+
+image::2.png[移动端与侧边栏文件管理, align="center", width=600]
+
+=== 2. 双视图与精准同步
+通过点击工具栏的 **Split** 按钮开启分屏模式，左侧显示富文本/预览，右侧显示 AsciiDoc 源码。
+
+image::3.jpg[分屏模式与代码高亮演示, align="center"]
+
+* [cite_start]**实时编译**：源码变动实时反射到预览视图，解析器采用 `asciidoctor.js` [cite: 350]。
+* [cite_start]**滚动同步**：任何一边点击内容，另一边都会自动滚动至该内容并在屏幕垂直方向居中显示 [cite: 386, 388]。
+* **双向高亮**：
+[cite_start]** 点击富文本：源码区域对应行显示黄色背景高亮 [cite: 194, 401]。
+[cite_start]** 点击源码：预览区域对应元素显示蓝色边框高亮 [cite: 220, 384]。
+
+=== 3. 完整的 AsciiDoc 支持
+* [cite_start]**解析器**：底层使用 `asciidoctor.js`，支持标准语法 [cite: 152]。
+* [cite_start]**代码高亮**：集成 `highlight.js` (Github Dark Theme)，支持多种语言的语法着色 [cite: 22, 350]。
+* [cite_start]**文件管理**：支持导入本地 `.adoc` 文件，支持将编辑内容导出为 `.adoc` 源码 [cite: 162, 174]。
+
+== 技术栈
+
+|===
+| 类别 | 技术方案
+
+| **核心框架** | [cite_start]React 19, TypeScript [cite: 147, 153]
+| **构建工具** | [cite_start]Vite [cite: 153]
+| **编辑器引擎** | [cite_start]Tiptap (Headless ProseMirror) [cite: 147]
+| **状态管理** | [cite_start]Zustand [cite: 147]
+| **AsciiDoc 渲染** | [cite_start]Asciidoctor.js [cite: 152]
+| **样式库** | [cite_start]Tailwind CSS [cite: 21]
+| **图标库** | [cite_start]Lucide React [cite: 147]
+| **语法高亮** | [cite_start]Highlight.js [cite: 152]
+|===
+
+== 快速开始
+
+=== 环境要求
+* Node.js >= 18.0.0
+
+=== 安装与运行
+
+. 克隆仓库
++
+[source,bash]
+----
+git clone https://github.com/your-username/Asciidoc_GUI_web.git
+cd Asciidoc_GUI_web
+----
+
+. 安装依赖
++
+[source,bash]
+----
+npm install
+----
+
+. 启动开发服务器
++
+[source,bash]
+----
+npm run dev
+----
++
+访问 `http://localhost:3000`。
+
+== 许可证
+
+本项目遵循 MIT 许可证。

@@ -224,6 +224,102 @@
       pointer-events: none;
     }
 
+    /* ProseMirror Color Classes (for Editor mode) */
+    .ProseMirror .red {
+      color: #ef4444;
+    }
+
+    .ProseMirror .blue {
+      color: #3b82f6;
+    }
+
+    .ProseMirror .green {
+      color: #22c55e;
+    }
+
+    .ProseMirror .yellow {
+      color: #eab308;
+    }
+
+    .ProseMirror .purple {
+      color: #a855f7;
+    }
+
+    .ProseMirror .aqua {
+      color: #06b6d4;
+    }
+
+    .ProseMirror .gray {
+      color: #6b7280;
+    }
+
+    .ProseMirror .white {
+      color: #ffffff;
+    }
+
+    .ProseMirror .black {
+      color: #000000;
+    }
+
+    .ProseMirror .orange {
+      color: #f97316;
+    }
+
+    /* ProseMirror Background Classes */
+    .ProseMirror .yellow-background {
+      background-color: #fef08a;
+      padding: 0.1em 0.3em;
+      border-radius: 0.2em;
+    }
+
+    .ProseMirror .red-background {
+      background-color: #fecaca;
+      padding: 0.1em 0.3em;
+      border-radius: 0.2em;
+    }
+
+    .ProseMirror .blue-background {
+      background-color: #bfdbfe;
+      padding: 0.1em 0.3em;
+      border-radius: 0.2em;
+    }
+
+    .ProseMirror .green-background {
+      background-color: #bbf7d0;
+      padding: 0.1em 0.3em;
+      border-radius: 0.2em;
+    }
+
+    .ProseMirror .aqua-background {
+      background-color: #a5f3fc;
+      padding: 0.1em 0.3em;
+      border-radius: 0.2em;
+    }
+
+    .ProseMirror .black-background {
+      background-color: #1e293b;
+      color: #f8fafc;
+      padding: 0.1em 0.3em;
+      border-radius: 0.2em;
+    }
+
+    /* ProseMirror Text Styles */
+    .ProseMirror .underline {
+      text-decoration: underline;
+    }
+
+    .ProseMirror .line-through {
+      text-decoration: line-through;
+    }
+
+    .ProseMirror .big {
+      font-size: 1.25em;
+    }
+
+    .ProseMirror .small {
+      font-size: 0.875em;
+    }
+
     /* =============================================
        Asciidoctor Preview Styles
        ============================================= */
@@ -512,6 +608,103 @@
       background-color: rgba(59, 130, 246, 0.05);
       cursor: pointer;
     }
+
+    /* =============================================
+       Mobile Responsive Styles
+       ============================================= */
+
+    /* 隐藏滚动条但保持滚动功能 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 移动端 Header 样式 */
+    .mobile-header {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    /* 桌面端隐藏移动端 Header */
+    @media (min-width: 768px) {
+      .mobile-header {
+        display: none !important;
+      }
+
+      .sidebar-container {
+        position: relative !important;
+        transform: translateX(0) !important;
+      }
+    }
+
+    /* 移动端样式 */
+    @media (max-width: 767px) {
+
+      /* 侧边栏遮罩动画 */
+      .sidebar-overlay {
+        transition: opacity 0.3s ease-in-out;
+      }
+
+      /* 工具栏调整 */
+      .toolbar-container {
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .toolbar-container .flex.items-center.gap-1 {
+        gap: 0;
+      }
+
+      /* 编辑器内边距调整 */
+      .ProseMirror {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      /* 预览区域调整 */
+      .asciidoc-preview {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      /* 隐藏桌面端的视图切换和导入导出按钮 */
+      .toolbar-container .flex.items-center.gap-3.ml-auto {
+        display: none;
+      }
+
+      /* 调整工具按钮大小 */
+      .toolbar-container button {
+        padding: 6px;
+      }
+
+      /* 分隔线调整 */
+      .toolbar-container .w-px.h-6 {
+        margin-left: 2px;
+        margin-right: 2px;
+      }
+    }
+
+    /* 触摸设备优化 */
+    @media (hover: none) and (pointer: coarse) {
+
+      /* 增加可点击区域 */
+      .toolbar-container button {
+        min-width: 36px;
+        min-height: 36px;
+      }
+
+      /* 禁用 hover 效果 */
+      .toolbar-container button:hover {
+        background-color: transparent;
+      }
+
+      .toolbar-container button:active {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
+    }
   </style>
 
   <script type="importmap">
@@ -539,7 +732,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/Asciidoc_GUI_web/assets/index-Cow-juV0.js"></script>
+  <script type="module" crossorigin src="/Asciidoc_GUI_web/assets/index-DvATmbx9.js"></script>
   <link rel="stylesheet" crossorigin href="/Asciidoc_GUI_web/assets/index-fZ18cxZC.css">
 </head>
 

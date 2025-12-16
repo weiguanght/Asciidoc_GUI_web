@@ -15,10 +15,7 @@ A modern, feature-rich WYSIWYG editor for AsciiDoc documents, built with React a
 
 一款现代化、功能丰富的 AsciiDoc 所见即所得编辑器，基于 React 和 Tiptap 构建。
 
-image::https://img.shields.io/badge/React-19.x-blue[React]
-image::https://img.shields.io/badge/TypeScript-5.x-blue[TypeScript]
-image::https://img.shields.io/badge/Vite-6.x-purple[Vite]
-image::https://img.shields.io/badge/License-MIT-green[License]
+image:https://img.shields.io/badge/React-19.x-blue[React] image:https://img.shields.io/badge/TypeScript-5.x-blue[TypeScript] image:https://img.shields.io/badge/Vite-6.x-purple[Vite] image:https://img.shields.io/badge/License-MIT-green[License]
 
 image::1.png[分屏模式与代码高亮演示, align="center"]
 

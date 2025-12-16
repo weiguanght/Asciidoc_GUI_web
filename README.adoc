@@ -50,14 +50,14 @@ image::3.jpg[分屏模式与代码高亮演示, align="center"]
 |===
 | 类别 | 技术方案
 
-| **核心框架** | [cite_start]React 19, TypeScript
-| **构建工具** | [cite_start]Vite
-| **编辑器引擎** | [cite_start]Tiptap (Headless ProseMirror)
-| **状态管理** | [cite_start]Zustand
-| **AsciiDoc 渲染** | [cite_start]Asciidoctor.js
-| **样式库** | [cite_start]Tailwind CSS
-| **图标库** | [cite_start]Lucide React
-| **语法高亮** | [cite_start]Highlight.js
+| **核心框架** | React 19, TypeScript
+| **构建工具** | Vite
+| **编辑器引擎** | Tiptap (Headless ProseMirror)
+| **状态管理** | Zustand
+| **AsciiDoc 渲染** | Asciidoctor.js
+| **样式库** | Tailwind CSS
+| **图标库** | Lucide React
+| **语法高亮** | Highlight.js
 |===
 
 == 快速开始

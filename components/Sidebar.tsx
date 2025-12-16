@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { FileText, Upload, Plus, Search, X, Pencil, Trash2, Moon, Sun, MoreVertical, List, ChevronRight, Folder, FolderOpen, FolderPlus, Move } from 'lucide-react';
+import { FileText, Upload, Plus, Search, X, Pencil, Trash2, Moon, Sun, MoreVertical, List, ChevronRight, Folder, FolderOpen, FolderPlus, Move, HardDrive, Save } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
 import { Button } from './ui/Button';
 import { FileItem } from '../types';
+import { openLocalFile, saveLocalFile, saveLocalFileAs, isFileSystemAccessSupported } from '../lib/file-system-access';
 
 // 大纲项接口
 interface OutlineItem {
@@ -48,6 +49,7 @@ export const Sidebar: React.FC = () => {
     moveItem,
     sidebarVisible,
     closeSidebar,
+    desktopSidebarVisible,
     darkMode,
     toggleDarkMode,
     sourceContent,
@@ -193,7 +195,8 @@ export const Sidebar: React.FC = () => {
           fixed md:relative
           top-0 left-0 bottom-0
           transform transition-all duration-300 ease-in-out
-          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}
+          ${desktopSidebarVisible ? 'md:translate-x-0 md:w-64 md:opacity-100' : 'md:-translate-x-full md:w-0 md:opacity-0 md:overflow-hidden md:border-r-0'}
         `}
       >
         {/* 头部 */}
@@ -483,6 +486,42 @@ export const Sidebar: React.FC = () => {
           >
             <Plus size={14} /> New Document
           </Button>
+
+          {/* 本地文件操作 */}
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-2 text-xs ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200' : 'text-gray-500'}`}
+            onClick={async () => {
+              try {
+                const result = await openLocalFile();
+                if (result) {
+                  importFile(result.name, result.content);
+                }
+              } catch (error) {
+                console.error('Open file error:', error);
+              }
+            }}
+          >
+            <HardDrive size={14} /> Open Local File
+          </Button>
+
+          <Button
+            variant="ghost"
+            className={`w-full justify-start gap-2 text-xs ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200' : 'text-gray-500'}`}
+            onClick={async () => {
+              const activeFile = files.find(f => f.id === activeFileId);
+              if (activeFile) {
+                try {
+                  await saveLocalFileAs(activeFile.content, activeFile.name);
+                } catch (error) {
+                  console.error('Save file error:', error);
+                }
+              }
+            }}
+          >
+            <Save size={14} /> Save to Local
+          </Button>
+
           <Button
             variant="ghost"
             className={`w-full justify-start gap-2 text-xs ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200' : 'text-gray-500'}`}

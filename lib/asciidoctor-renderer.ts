@@ -212,10 +212,44 @@ export const renderMermaidDiagrams = async (): Promise<void> => {
 const buildSourceLineMap = (adoc: string): Map<string, number> => {
     const lines = adoc.split('\n');
     const lineMap = new Map<string, number>();
+    let tableStartLine = 0;
+    let inTable = false;
+    let tableRowIndex = 0;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
+
+        // 检测表格开始/结束
+        if (line.startsWith('|===')) {
+            if (!inTable) {
+                inTable = true;
+                tableStartLine = i + 1;
+                tableRowIndex = 0;
+            } else {
+                inTable = false;
+            }
+            continue;
+        }
+
+        // 表格行映射
+        if (inTable && line.startsWith('|')) {
+            tableRowIndex++;
+            const key = `table-row:${tableStartLine}:${tableRowIndex}`;
+            lineMap.set(key, i + 1);
+            // 同时存储表格单元格内容
+            const cells = line.split('|').filter(c => c.trim());
+            cells.forEach((cell, cellIndex) => {
+                const cellContent = cell.trim().substring(0, 30);
+                if (cellContent) {
+                    const cellKey = `cell:${cellContent}`;
+                    if (!lineMap.has(cellKey)) {
+                        lineMap.set(cellKey, i + 1);
+                    }
+                }
+            });
+            continue;
+        }
 
         // 提取标题内容
         const headingMatch = line.match(/^(=+)\s+(.+)$/);
@@ -235,6 +269,32 @@ const buildSourceLineMap = (adoc: string): Map<string, number> => {
             const key = `li:${content}`;
             if (!lineMap.has(key)) {
                 lineMap.set(key, i + 1);
+            }
+            continue;
+        }
+
+        // 图片映射
+        const imageMatch = line.match(/^image::([^\[]+)/);
+        if (imageMatch) {
+            const imagePath = imageMatch[1].trim();
+            const key = `image:${imagePath}`;
+            if (!lineMap.has(key)) {
+                lineMap.set(key, i + 1);
+            }
+            continue;
+        }
+
+        // 告示块映射 ([NOTE], [TIP], [WARNING], [CAUTION], [IMPORTANT])
+        const admonitionMatch = line.match(/^\[(NOTE|TIP|WARNING|CAUTION|IMPORTANT)\]/i);
+        if (admonitionMatch) {
+            const type = admonitionMatch[1].toUpperCase();
+            // 获取下一行内容作为标识
+            if (i + 1 < lines.length) {
+                const nextLine = lines[i + 1].trim();
+                const key = `admonition:${type}:${nextLine.substring(0, 30)}`;
+                if (!lineMap.has(key)) {
+                    lineMap.set(key, i + 1);
+                }
             }
             continue;
         }
@@ -268,8 +328,9 @@ const addDataLineAttributes = (html: string, lineMap: Map<string, number>): stri
         return match;
     });
 
-    // 处理段落 (p)
-    html = html.replace(/<p([^>]*)>([^<]+)<\/p>/gi, (match, attrs, content) => {
+    // 处理段落 (p) - 改进匹配逻辑以支持包含 HTML 标签的内容
+    html = html.replace(/<p([^>]*)>([\s\S]*?)<\/p>/gi, (match, attrs, content) => {
+        if (attrs.includes('data-line')) return match;
         const textContent = content.replace(/<[^>]+>/g, '').trim();
         const key = textContent.substring(0, Math.min(50, textContent.length));
         const line = lineMap.get(key);
@@ -293,9 +354,57 @@ const addDataLineAttributes = (html: string, lineMap: Map<string, number>): stri
         return match;
     });
 
+    // 处理图片 (img)
+    html = html.replace(/<img([^>]*?)src="([^"]+)"([^>]*)>/gi, (match, before, src, after) => {
+        // 从路径中提取文件名
+        const filename = src.split('/').pop()?.split('?')[0] || src;
+        const key = `image:${filename}`;
+        const line = lineMap.get(key);
+        if (line) {
+            return `<img${before}src="${src}"${after} data-line="${line}">`;
+        }
+        // 尝试直接匹配完整路径
+        const fullKey = `image:${src}`;
+        const fullLine = lineMap.get(fullKey);
+        if (fullLine) {
+            return `<img${before}src="${src}"${after} data-line="${fullLine}">`;
+        }
+        return match;
+    });
+
+    // 处理告示块 (admonitionblock)
+    html = html.replace(/<div class="admonitionblock ([^"]+)"([^>]*)>([\s\S]*?)<\/div>/gi, (match, type, attrs, content) => {
+        if (attrs.includes('data-line')) return match;
+        // 提取内容文本
+        const textMatch = content.match(/<div class="content">\s*([\s\S]*?)\s*<\/div>/i);
+        if (textMatch) {
+            const textContent = textMatch[1].replace(/<[^>]+>/g, '').trim().substring(0, 30);
+            const key = `admonition:${type.toUpperCase()}:${textContent}`;
+            const line = lineMap.get(key);
+            if (line) {
+                return `<div class="admonitionblock ${type}"${attrs} data-line="${line}">${content}</div>`;
+            }
+        }
+        return match;
+    });
+
+    // 处理表格单元格 (td, th) - 基于单元格内容匹配
+    html = html.replace(/<(td|th)([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, content) => {
+        if (attrs.includes('data-line')) return match;
+        const textContent = content.replace(/<[^>]+>/g, '').trim().substring(0, 30);
+        if (textContent) {
+            const key = `cell:${textContent}`;
+            const line = lineMap.get(key);
+            if (line) {
+                return `<${tag}${attrs} data-line="${line}">${content}</${tag}>`;
+            }
+        }
+        return match;
+    });
+
     // 为未匹配的块级元素添加默认 data-line (使用位置索引)
     let blockIndex = 0;
-    html = html.replace(/<(pre|table|ul|ol|blockquote|div|section)([^>]*)>/gi, (match, tag, attrs) => {
+    html = html.replace(/<(pre|table|ul|ol|blockquote|section)([^>]*)>/gi, (match, tag, attrs) => {
         if (!attrs.includes('data-line')) {
             blockIndex++;
             return `<${tag}${attrs} data-line="block-${blockIndex}">`;

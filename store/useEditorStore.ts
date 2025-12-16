@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { FileItem, ViewMode } from '../types';
 import { INITIAL_CONTENT } from '../lib/asciidoc';
+import { openLocalFile, saveLocalFile, saveLocalFileAs } from '../lib/file-system-access';
 
 // 高亮行信息
 interface HighlightInfo {
@@ -14,6 +15,9 @@ interface SyncInfo {
   line: number;
   source: 'editor' | 'source';
 }
+
+// 当前文件的文件句柄（不持久化）
+let currentFileHandle: FileSystemFileHandle | null = null;
 
 interface EditorState {
   files: FileItem[];
@@ -30,6 +34,10 @@ interface EditorState {
   sidebarVisible: boolean;
   toolbarVisible: boolean;
 
+  // 桌面端 UI 状态
+  desktopSidebarVisible: boolean;
+  editorWidth: 50 | 75 | 100;
+
   // 搜索对话框状态
   searchDialogOpen: boolean;
 
@@ -38,6 +46,10 @@ interface EditorState {
 
   // 主题状态
   darkMode: boolean;
+
+  // 保存状态
+  isSaving: boolean;
+  lastSavedAt: number | null;
 
   // Actions
   setFiles: (files: FileItem[]) => void;
@@ -62,6 +74,10 @@ interface EditorState {
   toggleToolbar: () => void;
   closeSidebar: () => void;
 
+  // 桌面端 UI 操作
+  toggleDesktopSidebar: () => void;
+  setEditorWidth: (width: 50 | 75 | 100) => void;
+
   // 搜索对话框操作
   openSearchDialog: () => void;
   closeSearchDialog: () => void;
@@ -72,11 +88,18 @@ interface EditorState {
 
   // 主题操作
   toggleDarkMode: () => void;
+
+  // 文件系统操作
+  saveCurrentFile: () => Promise<boolean>;
+  saveAsFile: () => Promise<boolean>;
+  openLocalFile: () => Promise<boolean>;
+  getFileHandle: () => FileSystemFileHandle | null;
+  setFileHandle: (handle: FileSystemFileHandle | null) => void;
 }
 
 export const useEditorStore = create<EditorState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       files: [
         { id: '1', name: 'Getting Started.adoc', content: INITIAL_CONTENT, lastModified: Date.now(), parentId: null, type: 'file' as const },
         { id: '2', name: 'Architecture.adoc', content: '= Architecture\n\nDetails about system design.', lastModified: Date.now(), parentId: null, type: 'file' as const }
@@ -89,20 +112,26 @@ export const useEditorStore = create<EditorState>()(
       syncToLine: null,
       sidebarVisible: false,
       toolbarVisible: false,
+      desktopSidebarVisible: true,
+      editorWidth: 75,
       searchDialogOpen: false,
       imageManagerOpen: false,
       darkMode: false,
+      isSaving: false,
+      lastSavedAt: null,
 
       setFiles: (files) => set({ files }),
 
       setActiveFile: (id) => set((state) => {
         const file = state.files.find(f => f.id === id);
+        // 切换文件时清除文件句柄
+        currentFileHandle = null;
         return {
           activeFileId: id,
           sourceContent: file ? file.content : '',
           highlightLine: null,
           syncToLine: null,
-          sidebarVisible: false, // 选择文件后自动关闭侧边栏
+          sidebarVisible: false,
         };
       }),
 
@@ -131,6 +160,7 @@ export const useEditorStore = create<EditorState>()(
           parentId,
           type: 'file'
         };
+        currentFileHandle = null;
         return {
           files: [...state.files, newFile],
           activeFileId: newFile.id,
@@ -180,9 +210,9 @@ export const useEditorStore = create<EditorState>()(
 
       deleteFile: (id) => set((state) => {
         const updatedFiles = state.files.filter(f => f.id !== id);
-        // 如果删除的是当前激活的文件，切换到第一个文件
         if (state.activeFileId === id) {
           const newActiveFile = updatedFiles[0];
+          currentFileHandle = null;
           return {
             files: updatedFiles,
             activeFileId: newActiveFile?.id || null,
@@ -192,7 +222,6 @@ export const useEditorStore = create<EditorState>()(
         return { files: updatedFiles };
       }),
 
-      // 移动文件/文件夹到新位置
       moveItem: (id, newParentId) => set((state) => {
         const updatedFiles = state.files.map(f =>
           f.id === id ? { ...f, parentId: newParentId, lastModified: Date.now() } : f
@@ -200,14 +229,12 @@ export const useEditorStore = create<EditorState>()(
         return { files: updatedFiles };
       }),
 
-      // 切换文件夹展开/折叠状态（使用 localStorage 单独存储）
       toggleFolderExpand: (id) => {
         const expandedFolders = JSON.parse(localStorage.getItem('expanded-folders') || '{}');
         expandedFolders[id] = !expandedFolders[id];
         localStorage.setItem('expanded-folders', JSON.stringify(expandedFolders));
       },
 
-      // 设置高亮行并触发另一侧同步
       setHighlightLine: (line, source) => set(() => {
         const oppositeSource = source === 'editor' ? 'source' : 'editor';
         return {
@@ -217,24 +244,79 @@ export const useEditorStore = create<EditorState>()(
       }),
 
       clearHighlightLine: () => set({ highlightLine: null }),
-
       setSyncToLine: (info) => set({ syncToLine: info }),
 
-      // 移动端 UI 操作
       toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
       toggleToolbar: () => set((state) => ({ toolbarVisible: !state.toolbarVisible })),
       closeSidebar: () => set({ sidebarVisible: false }),
 
-      // 搜索对话框操作
+      toggleDesktopSidebar: () => set((state) => ({ desktopSidebarVisible: !state.desktopSidebarVisible })),
+      setEditorWidth: (width) => set({ editorWidth: width }),
+
       openSearchDialog: () => set({ searchDialogOpen: true }),
       closeSearchDialog: () => set({ searchDialogOpen: false }),
 
-      // 图片管理器操作
       openImageManager: () => set({ imageManagerOpen: true }),
       closeImageManager: () => set({ imageManagerOpen: false }),
 
-      // 主题操作
       toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+
+      // 文件系统操作
+      saveCurrentFile: async () => {
+        const state = get();
+        const activeFile = state.files.find(f => f.id === state.activeFileId);
+        const fileName = activeFile?.name || 'document.adoc';
+        set({ isSaving: true });
+
+        try {
+          // 使用 saveLocalFile（会检查缓存的句柄）
+          const success = await saveLocalFile(state.sourceContent, fileName);
+          set({ isSaving: false, lastSavedAt: success ? Date.now() : state.lastSavedAt });
+          return success;
+        } catch (error) {
+          console.error('[saveCurrentFile] Error:', error);
+          set({ isSaving: false });
+          return false;
+        }
+      },
+
+      saveAsFile: async () => {
+        const state = get();
+        const activeFile = state.files.find(f => f.id === state.activeFileId);
+        const suggestedName = activeFile?.name || 'document.adoc';
+
+        try {
+          const success = await saveLocalFileAs(state.sourceContent, suggestedName);
+          if (success) {
+            set({ lastSavedAt: Date.now() });
+          }
+          return success;
+        } catch (error) {
+          console.error('[saveAsFile] Error:', error);
+          return false;
+        }
+      },
+
+      openLocalFile: async () => {
+        try {
+          const result = await openLocalFile();
+          if (result && result.content !== undefined) {
+            const name = result.name || 'Untitled.adoc';
+            const content = result.content;
+
+            // 导入文件
+            get().importFile(name, content);
+            return true;
+          }
+          return false;
+        } catch (error) {
+          console.error('[openLocalFile] Error:', error);
+          return false;
+        }
+      },
+
+      getFileHandle: () => currentFileHandle,
+      setFileHandle: (handle) => { currentFileHandle = handle; },
     }),
     {
       name: 'asciidoc-editor-storage',

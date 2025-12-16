@@ -1,36 +1,30 @@
 /**
- * 图片资源管理器
- * 处理图片的上传、存储和预览
+ * 图片资源管理器 (v2)
+ * 使用 IndexedDB 存储图片，管理 Blob URL 生命周期
  */
 
-import React, { useState, useCallback } from 'react';
-import { Image, Upload, X, Copy, Trash2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Image, Upload, X, Copy, Trash2, AlertCircle } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
+import {
+    putImage,
+    getImage,
+    deleteImage,
+    getAllImages,
+    createImageUrl,
+    revokeImageUrl,
+    revokeAllImageUrls,
+    dataUrlToBlob,
+    StoredImage,
+    ImageMetadata,
+} from '../lib/image-service';
 
-// 图片项接口
-export interface ImageItem {
+// 显示用的图片项（带 Blob URL）
+interface DisplayImage {
     id: string;
-    name: string;
-    dataUrl: string;  // Base64 Data URL
-    size: number;
-    type: string;
-    createdAt: number;
+    metadata: ImageMetadata;
+    blobUrl: string | null;
 }
-
-// 图片管理器状态（使用 localStorage）
-const STORAGE_KEY = 'asciidoc-images';
-
-const getStoredImages = (): ImageItem[] => {
-    try {
-        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    } catch {
-        return [];
-    }
-};
-
-const saveImages = (images: ImageItem[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
-};
 
 interface ImageManagerDialogProps {
     isOpen: boolean;
@@ -44,9 +38,62 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
     onInsertImage,
 }) => {
     const { darkMode } = useEditorStore();
-    const [images, setImages] = useState<ImageItem[]>(getStoredImages);
+    const [images, setImages] = useState<DisplayImage[]>([]);
     const [uploading, setUploading] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    // 跟踪已创建的 Blob URL（用于清理）
+    const blobUrlsRef = useRef<Set<string>>(new Set());
+
+    // 加载图片列表
+    const loadImages = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const storedImages = await getAllImages();
+
+            // 为每个图片创建 Blob URL
+            const displayImages: DisplayImage[] = await Promise.all(
+                storedImages.map(async (img) => {
+                    const blobUrl = await createImageUrl(img.id);
+                    if (blobUrl) {
+                        blobUrlsRef.current.add(img.id);
+                    }
+                    return {
+                        id: img.id,
+                        metadata: img.metadata,
+                        blobUrl,
+                    };
+                })
+            );
+
+            setImages(displayImages);
+        } catch (err) {
+            console.error('[ImageManager] Load error:', err);
+            setError('Failed to load images');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // 组件挂载时加载图片
+    useEffect(() => {
+        if (isOpen) {
+            loadImages();
+        }
+    }, [isOpen, loadImages]);
+
+    // 组件卸载时清理所有 Blob URL
+    useEffect(() => {
+        return () => {
+            console.log('[ImageManager] Cleaning up Blob URLs on unmount');
+            revokeAllImageUrls();
+            blobUrlsRef.current.clear();
+        };
+    }, []);
 
     // 处理文件上传
     const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,57 +101,71 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
         if (!files || files.length === 0) return;
 
         setUploading(true);
-        const newImages: ImageItem[] = [];
+        setError(null);
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (!file.type.startsWith('image/')) continue;
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith('image/')) continue;
 
-            // 转换为 Base64
-            const dataUrl = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.readAsDataURL(file);
-            });
+                // 存储到 IndexedDB
+                const stored = await putImage(file, file.name);
 
-            newImages.push({
-                id: `img-${Date.now()}-${i}`,
-                name: file.name,
-                dataUrl,
-                size: file.size,
-                type: file.type,
-                createdAt: Date.now(),
-            });
+                // 创建 Blob URL 用于显示
+                const blobUrl = await createImageUrl(stored.id);
+                if (blobUrl) {
+                    blobUrlsRef.current.add(stored.id);
+                }
+
+                setImages(prev => [...prev, {
+                    id: stored.id,
+                    metadata: stored.metadata,
+                    blobUrl,
+                }]);
+            }
+        } catch (err) {
+            console.error('[ImageManager] Upload error:', err);
+            setError('Failed to upload image');
+        } finally {
+            setUploading(false);
+            e.target.value = '';
         }
-
-        const updatedImages = [...images, ...newImages];
-        setImages(updatedImages);
-        saveImages(updatedImages);
-        setUploading(false);
-        e.target.value = ''; // 重置 input
-    }, [images]);
+    }, []);
 
     // 删除图片
-    const handleDelete = useCallback((id: string) => {
-        const updatedImages = images.filter(img => img.id !== id);
-        setImages(updatedImages);
-        saveImages(updatedImages);
-    }, [images]);
+    const handleDelete = useCallback(async (id: string) => {
+        try {
+            // 释放 Blob URL
+            revokeImageUrl(id);
+            blobUrlsRef.current.delete(id);
+
+            // 从 IndexedDB 删除
+            await deleteImage(id);
+
+            // 更新状态
+            setImages(prev => prev.filter(img => img.id !== id));
+        } catch (err) {
+            console.error('[ImageManager] Delete error:', err);
+            setError('Failed to delete image');
+        }
+    }, []);
 
     // 复制 AsciiDoc 引用语法
-    const handleCopyRef = useCallback((image: ImageItem) => {
-        const ref = `image::${image.name}[]`;
+    const handleCopyRef = useCallback((image: DisplayImage) => {
+        const ref = `image::${image.metadata.name}[]`;
         navigator.clipboard.writeText(ref);
         setCopiedId(image.id);
         setTimeout(() => setCopiedId(null), 2000);
     }, []);
 
     // 插入图片到编辑器
-    const handleInsert = useCallback((image: ImageItem) => {
-        // 对于内嵌图片，使用 data URL
-        const ref = `image::${image.dataUrl}[${image.name}]`;
-        onInsertImage(ref);
-        onClose();
+    const handleInsert = useCallback(async (image: DisplayImage) => {
+        // 使用 Blob URL 作为 src
+        if (image.blobUrl) {
+            const ref = `image::${image.blobUrl}[${image.metadata.name}]`;
+            onInsertImage(ref);
+            onClose();
+        }
     }, [onInsertImage, onClose]);
 
     // 格式化文件大小
@@ -137,11 +198,19 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
                     </button>
                 </div>
 
+                {/* 错误提示 */}
+                {error && (
+                    <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 flex items-center gap-2 text-red-500 text-sm">
+                        <AlertCircle size={16} />
+                        {error}
+                    </div>
+                )}
+
                 {/* 上传区域 */}
                 <div className={`p-4 border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                     <label className={`flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${darkMode
-                            ? 'border-slate-600 hover:border-blue-500 hover:bg-slate-700/50'
-                            : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+                        ? 'border-slate-600 hover:border-blue-500 hover:bg-slate-700/50'
+                        : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
                         }`}>
                         <Upload size={20} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
                         <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -153,13 +222,18 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
                             multiple
                             onChange={handleUpload}
                             className="hidden"
+                            disabled={uploading}
                         />
                     </label>
                 </div>
 
                 {/* 图片列表 */}
                 <div className="flex-1 overflow-y-auto p-4">
-                    {images.length === 0 ? (
+                    {loading ? (
+                        <div className={`text-center py-8 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                            Loading...
+                        </div>
+                    ) : images.length === 0 ? (
                         <div className={`text-center py-8 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                             No images uploaded yet
                         </div>
@@ -173,20 +247,26 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
                                 >
                                     {/* 预览图 */}
                                     <div className="aspect-square overflow-hidden">
-                                        <img
-                                            src={image.dataUrl}
-                                            alt={image.name}
-                                            className="w-full h-full object-cover"
-                                        />
+                                        {image.blobUrl ? (
+                                            <img
+                                                src={image.blobUrl}
+                                                alt={image.metadata.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className={`w-full h-full flex items-center justify-center ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                                                <Image size={32} className={darkMode ? 'text-slate-500' : 'text-gray-400'} />
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* 信息 */}
                                     <div className={`p-2 ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
                                         <p className={`text-xs truncate ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                                            {image.name}
+                                            {image.metadata.name}
                                         </p>
                                         <p className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                            {formatSize(image.size)}
+                                            {formatSize(image.metadata.size)}
                                         </p>
                                     </div>
 
@@ -202,8 +282,8 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
                                         <button
                                             onClick={() => handleCopyRef(image)}
                                             className={`p-1.5 rounded ${copiedId === image.id
-                                                    ? 'bg-green-500 text-white'
-                                                    : darkMode ? 'bg-slate-600 text-slate-200 hover:bg-slate-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                ? 'bg-green-500 text-white'
+                                                : darkMode ? 'bg-slate-600 text-slate-200 hover:bg-slate-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                                 }`}
                                             title="Copy reference"
                                         >
@@ -226,9 +306,11 @@ export const ImageManagerDialog: React.FC<ImageManagerDialogProps> = ({
                 {/* 底部提示 */}
                 <div className={`px-4 py-2 text-[10px] border-t ${darkMode ? 'border-slate-700 text-slate-500' : 'border-gray-200 text-gray-400'
                     }`}>
-                    Images are stored locally in your browser. Total: {images.length} images
+                    Images stored in IndexedDB. Total: {images.length} images
                 </div>
             </div>
         </div>
     );
 };
+
+export default ImageManagerDialog;

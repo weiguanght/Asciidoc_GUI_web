@@ -13,14 +13,19 @@ import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { TableCaption } from '../extensions/TableCaption';
+import { AdmonitionNode } from '../extensions/admonition-node';
+import { IncludeNode } from '../extensions/include-node';
+import { SlashCommands } from '../extensions/slash-commands';
 import { useEditorStore } from '../store/useEditorStore';
 import { jsonToAdoc, adocToHtml } from '../lib/asciidoc';
 import { renderMermaidDiagrams } from '../lib/asciidoctor-renderer';
 import { convertToAdoc } from '../lib/paste-converter';
+import { sanitizeHtml } from '../lib/html-sanitizer';
 import { Toolbar } from './Toolbar';
 import { SourceEditor } from './SourceEditor';
+import { ContextMenu } from './ContextMenu';
 import { ViewMode } from '../types';
-import { getLineFromElement, highlightElement, scrollToElement } from '../lib/sync-utils';
+import { getLineFromElement, highlightElement, scrollToElement, findNearestDataLineElement, highlightAndScrollToElement } from '../lib/sync-utils';
 
 // Custom FontSize Extension
 const FontSize = Extension.create({
@@ -64,7 +69,7 @@ const FontSize = Extension.create({
           .removeEmptyTextStyle()
           .run();
       },
-    };
+    } as any;
   },
 });
 
@@ -79,7 +84,22 @@ export const TiptapEditor: React.FC = () => {
     setSyncToLine,
     highlightLine,
     darkMode,
+    editorWidth,
   } = useEditorStore();
+
+  // 计算编辑器/预览区域的宽度类
+  const getContainerWidthClass = () => {
+    if (viewMode === ViewMode.SPLIT) return 'w-full';
+
+    switch (editorWidth) {
+      case 50: return 'w-1/2 mx-auto';
+      case 75: return 'w-3/4 mx-auto';
+      case 100: return 'w-full';
+      default: return 'max-w-3xl mx-auto'; // 默认回退
+    }
+  };
+
+  const containerWidthClass = getContainerWidthClass();
 
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -99,6 +119,9 @@ export const TiptapEditor: React.FC = () => {
       Color,
       Underline,
       FontSize,
+      AdmonitionNode,
+      IncludeNode,
+      SlashCommands,
       Highlight.configure({
         multicolor: true,
       }),
@@ -333,24 +356,74 @@ export const TiptapEditor: React.FC = () => {
   // 处理预览区域点击，触发同步
   const handlePreviewClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    const line = getLineFromElement(target);
-    if (line) {
-      setHighlightLine(line, 'editor');
-      highlightElement(target);
-    }
-  }, [setHighlightLine]);
+    const container = previewRef.current;
 
-  // 处理同步滚动到指定行
-  useEffect(() => {
-    if (syncToLine && syncToLine.source === 'source' && previewRef.current) {
-      const targetElement = previewRef.current.querySelector(`[data-line="${syncToLine.line}"]`) as HTMLElement;
-      if (targetElement && editorContainerRef.current) {
-        scrollToElement(targetElement, editorContainerRef.current);
-        highlightElement(targetElement);
+    if (!container) return;
+
+    // 查找最近的带 data-line 属性的元素
+    const dataLineElement = findNearestDataLineElement(target, container);
+
+    if (dataLineElement) {
+      const line = getLineFromElement(dataLineElement);
+      if (line) {
+        setHighlightLine(line, 'editor');
+        highlightElement(dataLineElement);
       }
+    } else {
+      // 如果没找到 data-line 元素，尝试使用相对位置计算行号
+      const containerRect = container.getBoundingClientRect();
+      const clickY = e.clientY - containerRect.top + container.scrollTop;
+      const contentHeight = container.scrollHeight;
+      const lineCount = sourceContent.split('\n').length;
+      const estimatedLine = Math.max(1, Math.ceil((clickY / contentHeight) * lineCount));
+      setHighlightLine(estimatedLine, 'editor');
+    }
+  }, [setHighlightLine, sourceContent]);
+
+  // 处理同步滚动到指定行 - 当从 source 点击时同步到预览区
+  useEffect(() => {
+    if (syncToLine && syncToLine.source === 'source' && previewRef.current && editorContainerRef.current) {
+      // 精确匹配：查找带有精确行号的元素
+      let targetElement = previewRef.current.querySelector(`[data-line="${syncToLine.line}"]`) as HTMLElement;
+
+      // 如果没找到精确匹配，尝试查找最接近的元素
+      if (!targetElement) {
+        const allElements = previewRef.current.querySelectorAll('[data-line]');
+        let closestElement: HTMLElement | null = null;
+        let closestDistance = Infinity;
+
+        allElements.forEach(el => {
+          const line = parseInt(el.getAttribute('data-line') || '0', 10);
+          if (!isNaN(line)) {
+            const distance = Math.abs(line - syncToLine.line);
+            if (distance < closestDistance) {
+              closestDistance = distance;
+              closestElement = el as HTMLElement;
+            }
+          }
+        });
+
+        if (closestElement && closestDistance <= 5) {
+          targetElement = closestElement;
+        }
+      }
+
+      if (targetElement) {
+        highlightAndScrollToElement(targetElement, editorContainerRef.current);
+      } else {
+        // 使用比例滚动作为回退方案
+        const lineCount = sourceContent.split('\n').length;
+        const scrollPercentage = syncToLine.line / lineCount;
+        const scrollHeight = editorContainerRef.current.scrollHeight - editorContainerRef.current.clientHeight;
+        editorContainerRef.current.scrollTo({
+          top: scrollPercentage * scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+
       setSyncToLine(null);
     }
-  }, [syncToLine, setSyncToLine]);
+  }, [syncToLine, setSyncToLine, sourceContent]);
 
   if (!editor) {
     return null;
@@ -384,17 +457,18 @@ export const TiptapEditor: React.FC = () => {
           `}
         >
           {renderPreview ? (
-            // Asciidoctor.js 渲染的预览
+            // Asciidoctor.js 渲染的预览（使用 DOMPurify 清洗防止 XSS）
             <div
               ref={previewRef}
-              className={`max-w-4xl mx-auto px-8 py-12 asciidoc-preview ${darkMode ? 'dark-preview' : ''}`}
+              className={`px-8 py-12 asciidoc-preview ${darkMode ? 'dark-preview' : ''} ${containerWidthClass}`}
               onClick={handlePreviewClick}
-              dangerouslySetInnerHTML={{ __html: adocToHtml(sourceContent) }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(adocToHtml(sourceContent)) }}
             />
           ) : (
             // Tiptap 富文本编辑器
+            // Tiptap 富文本编辑器
             <div
-              className="max-w-3xl mx-auto px-8 py-12"
+              className={`px-8 py-12 ${containerWidthClass}`}
               onClick={() => editor.chain().focus().run()}
             >
               <EditorContent editor={editor} />
@@ -409,6 +483,9 @@ export const TiptapEditor: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Context Menu */}
+      <ContextMenu editor={editor} />
     </div>
   );
 };

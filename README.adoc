@@ -1,6 +1,9 @@
 = AsciiDoc WYSIWYG Editor / 所见即所得编辑器
+:toc: macro
+:toc-title: 目录
 :icons: font
 :source-highlighter: highlight.js
+:imagesdir: images
 
 [cols="1,1", frame=none, grid=none]
 |===
@@ -17,7 +20,7 @@ image::https://img.shields.io/badge/TypeScript-5.x-blue[TypeScript]
 image::https://img.shields.io/badge/Vite-6.x-purple[Vite]
 image::https://img.shields.io/badge/License-MIT-green[License]
 
-image::3.jpg[分屏模式与代码高亮演示, align="center"]
+image::1.png[分屏模式与代码高亮演示, align="center"]
 
 == Table of Contents / 目录
 

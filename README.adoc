@@ -7,7 +7,6 @@
 
 基于 Web 的现代化所见即所得 (WYSIWYG) AsciiDoc 编辑器。该项目结合了类似 Word 的富文本编辑体验与 AsciiDoc 的强大功能，提供精确的双向同步和源码编辑能力。
 
-image::1.png[AsciiDoc GUI Web 编辑器主界面, align="center"]
 
 image:https://img.shields.io/badge/License-MIT-blue.svg[License]
 image:https://img.shields.io/badge/React-19.0-61dafb.svg[React]
@@ -25,8 +24,8 @@ AsciiDoc GUI Web 是一个纯前端的可视化编辑器，旨在降低 AsciiDoc
 === 1. 所见即所得 (WYSIWYG)
 提供现代化的书写体验，支持类似 Word 的操作逻辑。
 * **丰富组件**：支持插入图片、图标、表格、代码块。
-* [cite_start]**样式调整**：支持字体格式（加粗/斜体/下划线）、字体颜色、背景高亮 [cite: 207, 270]。
-* [cite_start]**表格增强**：支持列宽拖拽调整、合并单元格及行/列操作 [cite: 206, 301]。
+* **样式调整**：支持字体格式（加粗/斜体/下划线）、字体颜色、背景高亮。
+* **表格增强**：支持列宽拖拽调整、合并单元格及行/列操作。
 
 image::2.png[移动端与侧边栏文件管理, align="center", width=600]
 
@@ -35,30 +34,30 @@ image::2.png[移动端与侧边栏文件管理, align="center", width=600]
 
 image::3.jpg[分屏模式与代码高亮演示, align="center"]
 
-* [cite_start]**实时编译**：源码变动实时反射到预览视图，解析器采用 `asciidoctor.js` [cite: 350]。
-* [cite_start]**滚动同步**：任何一边点击内容，另一边都会自动滚动至该内容并在屏幕垂直方向居中显示 [cite: 386, 388]。
+* **实时编译**：源码变动实时反射到预览视图，解析器采用 `asciidoctor.js`。
+* **滚动同步**：任何一边点击内容，另一边都会自动滚动至该内容并在屏幕垂直方向居中显示。
 * **双向高亮**：
-[cite_start]** 点击富文本：源码区域对应行显示黄色背景高亮 [cite: 194, 401]。
-[cite_start]** 点击源码：预览区域对应元素显示蓝色边框高亮 [cite: 220, 384]。
+** 点击富文本：源码区域对应行显示黄色背景高亮。
+** 点击源码：预览区域对应元素显示蓝色边框高亮。
 
 === 3. 完整的 AsciiDoc 支持
-* [cite_start]**解析器**：底层使用 `asciidoctor.js`，支持标准语法 [cite: 152]。
-* [cite_start]**代码高亮**：集成 `highlight.js` (Github Dark Theme)，支持多种语言的语法着色 [cite: 22, 350]。
-* [cite_start]**文件管理**：支持导入本地 `.adoc` 文件，支持将编辑内容导出为 `.adoc` 源码 [cite: 162, 174]。
+* **解析器**：底层使用 `asciidoctor.js`，支持标准语法。
+* **代码高亮**：集成 `highlight.js` (Github Dark Theme)，支持多种语言的语法着色。
+* **文件管理**：支持导入本地 `.adoc` 文件，支持将编辑内容导出为 `.adoc` 源码。
 
 == 技术栈
 
 |===
 | 类别 | 技术方案
 
-| **核心框架** | [cite_start]React 19, TypeScript [cite: 147, 153]
-| **构建工具** | [cite_start]Vite [cite: 153]
-| **编辑器引擎** | [cite_start]Tiptap (Headless ProseMirror) [cite: 147]
-| **状态管理** | [cite_start]Zustand [cite: 147]
-| **AsciiDoc 渲染** | [cite_start]Asciidoctor.js [cite: 152]
-| **样式库** | [cite_start]Tailwind CSS [cite: 21]
-| **图标库** | [cite_start]Lucide React [cite: 147]
-| **语法高亮** | [cite_start]Highlight.js [cite: 152]
+| **核心框架** | [cite_start]React 19, TypeScript
+| **构建工具** | [cite_start]Vite
+| **编辑器引擎** | [cite_start]Tiptap (Headless ProseMirror)
+| **状态管理** | [cite_start]Zustand
+| **AsciiDoc 渲染** | [cite_start]Asciidoctor.js
+| **样式库** | [cite_start]Tailwind CSS
+| **图标库** | [cite_start]Lucide React
+| **语法高亮** | [cite_start]Highlight.js
 |===
 
 == 快速开始

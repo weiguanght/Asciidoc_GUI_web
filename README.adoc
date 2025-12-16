@@ -27,19 +27,19 @@ image::1.png[分屏模式与代码高亮演示, align="center"]
 | *中文*
 
 | link:#features[Features]
-| link:#features-cn
+| link:#features-cn[功能特性]
 
 | link:#tech-stack[Tech Stack]
-| link:#tech-stack-cn
+| link:#tech-stack-cn[技术栈]
 
 | link:#getting-started[Getting Started]
-| link:#getting-started-cn
+| link:#getting-started-cn[快速开始]
 
 | link:#project-structure[Project Structure]
-| link:#project-structure-cn
+| link:#project-structure-cn[项目结构]
 
 | link:#usage[Usage]
-| link:#usage-cn
+| link:#usage-cn[使用方法]
 |===
 
 '''

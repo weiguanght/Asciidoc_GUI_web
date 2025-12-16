@@ -77,6 +77,7 @@ export const adocToHtml = (adoc: string, files?: FileItem[], currentFileName?: s
         // Asciidoctor 转换选项
         const options = {
             safe: 'safe',
+            doctype: 'book',
             attributes: {
                 'showtitle': true,
                 'icons': 'font',

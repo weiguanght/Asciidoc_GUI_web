@@ -29,6 +29,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
   <!-- Font Awesome for Asciidoctor icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- KaTeX for math formulas -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -609,6 +611,37 @@
       cursor: pointer;
     }
 
+    /* Mermaid Diagrams */
+    .asciidoc-preview .mermaid-container {
+      margin: 1.5em 0;
+      overflow-x: auto;
+    }
+
+    .asciidoc-preview .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Math Formulas */
+    .asciidoc-preview .math-inline {
+      display: inline-block;
+    }
+
+    .asciidoc-preview .math-block {
+      display: block;
+      text-align: center;
+      margin: 1.5em 0;
+      overflow-x: auto;
+    }
+
+    .asciidoc-preview .katex-error {
+      color: #ef4444;
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #fef2f2;
+      padding: 0.25em 0.5em;
+      border-radius: 0.25em;
+    }
+
     /* =============================================
        Dark Mode Preview Styles
        ============================================= */
@@ -797,7 +830,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/Asciidoc_GUI_web/assets/index-DiTW6ogd.js"></script>
+  <script type="module" crossorigin src="/Asciidoc_GUI_web/assets/index-CmBOv5B5.js"></script>
   <link rel="stylesheet" crossorigin href="/Asciidoc_GUI_web/assets/index-fZ18cxZC.css">
 </head>
 

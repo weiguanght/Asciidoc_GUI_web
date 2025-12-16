@@ -1,4 +1,6 @@
-= AsciiDoc WYSIWYG Editor / 所见即所得编辑器
+= AsciiDoc WYSIWYG Editor
+
+= AsciiDoc 可视化编辑器
 :toc: macro
 :toc-title: 目录
 :icons: font

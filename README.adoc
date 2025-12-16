@@ -8,7 +8,7 @@
 [cols="1,1", frame=none, grid=none]
 |===
 ^| 🇬🇧 *English* (Current)
-^| link:#中文版[🇨🇳 *中文版*]
+^| link:#cn-version[🇨🇳 *中文版*]
 |===
 
 A modern, feature-rich WYSIWYG editor for AsciiDoc documents, built with React and Tiptap.
@@ -27,19 +27,19 @@ image::1.png[分屏模式与代码高亮演示, align="center"]
 | *中文*
 
 | link:#features[Features]
-| link:#功能特性[功能特性]
+| link:#features-cn
 
 | link:#tech-stack[Tech Stack]
-| link:#技术栈[技术栈]
+| link:#tech-stack-cn
 
 | link:#getting-started[Getting Started]
-| link:#快速开始[快速开始]
+| link:#getting-started-cn
 
 | link:#project-structure[Project Structure]
-| link:#项目结构[项目结构]
+| link:#project-structure-cn
 
 | link:#usage[Usage]
-| link:#使用方法[使用方法]
+| link:#usage-cn
 |===
 
 '''
@@ -223,9 +223,9 @@ asciidoc-wysiwyg-editor/
 
 ---
 
-[[中文版]]
+[[cn-version]]
 
-[[功能特性]]
+[[features-cn]]
 == 功能特性
 
 === 富文本编辑
@@ -262,7 +262,7 @@ asciidoc-wysiwyg-editor/
 ** `.zip`（包含图片的压缩包）
 * 图片管理，支持嵌入式 Data URL
 
-[[技术栈]]
+[[tech-stack-cn]]
 == 技术栈
 
 [cols="1,3"]
@@ -294,7 +294,7 @@ asciidoc-wysiwyg-editor/
 |Zustand
 |===
 
-[[快速开始]]
+[[getting-started-cn]]
 == 快速开始
 
 === 环境要求
@@ -337,7 +337,7 @@ npm run preview
 npm run deploy
 ----
 
-[[项目结构]]
+[[project-structure-cn]]
 == 项目结构
 
 [source,text]
@@ -363,7 +363,7 @@ asciidoc-wysiwyg-editor/
 └── vite.config.ts        # Vite 配置
 ----
 
-[[使用方法]]
+[[usage-cn]]
 == 使用方法
 
 === 基本编辑

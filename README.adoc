@@ -40,9 +40,6 @@ image::1.png[分屏模式与代码高亮演示, align="center"]
 
 | link:#usage[Usage]
 | link:#使用方法[使用方法]
-
-| link:#license[License]
-| link:#许可证[许可证]
 |===
 
 '''
@@ -223,10 +220,6 @@ asciidoc-wysiwyg-editor/
 |Redo
 |===
 
-[[license]]
-== License
-
-MIT License - see the LICENSE file for details.
 
 ---
 
@@ -407,8 +400,3 @@ asciidoc-wysiwyg-editor/
 |`Ctrl/Cmd + Shift + Z`
 |重做
 |===
-
-[[许可证]]
-== 许可证
-
-MIT 许可证 - 详情请查看 LICENSE 文件。

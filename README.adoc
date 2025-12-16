@@ -44,6 +44,8 @@ image::1.png[分屏模式与代码高亮演示, align="center"]
 
 '''
 
+= English version
+
 [[features]]
 == Features
 
@@ -224,6 +226,7 @@ asciidoc-wysiwyg-editor/
 ---
 
 [[cn-version]]
+= 中文版
 
 [[features-cn]]
 == 功能特性

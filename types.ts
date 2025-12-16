@@ -3,6 +3,8 @@ export interface FileItem {
   name: string;
   content: string;
   lastModified: number;
+  parentId: string | null;  // 父文件夹 ID，null 表示根目录
+  type: 'file' | 'folder';  // 类型：文件或文件夹
 }
 
 export enum ViewMode {

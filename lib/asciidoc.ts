@@ -148,12 +148,13 @@ const renderTable = (node: AsciiDocNode): string => {
     text: string;
     colspan: number;
     rowspan: number;
+    isHeader: boolean;
   }
 
   const rows: CellData[][] = [];
   let maxCols = 0;
 
-  filteredContent.forEach((row) => {
+  filteredContent.forEach((row, rowIndex) => {
     if (row.type === 'tableRow' && row.content) {
       const rowCells: CellData[] = [];
       let colCount = 0;
@@ -165,11 +166,13 @@ const renderTable = (node: AsciiDocNode): string => {
 
         const colspan = cell.attrs?.colspan || 1;
         const rowspan = cell.attrs?.rowspan || 1;
+        const isHeader = cell.type === 'tableHeader';
 
         rowCells.push({
           text: cellText,
           colspan,
-          rowspan
+          rowspan,
+          isHeader
         });
 
         colCount += colspan;
@@ -185,39 +188,49 @@ const renderTable = (node: AsciiDocNode): string => {
   // 生成列定义
   const colDef = Array(maxCols).fill('1').join(',');
 
+  // 检测第一行是否是表头
+  const hasHeader = rows.length > 0 && rows[0].some(cell => cell.isHeader);
+
   // 生成表格内容
+  // AsciiDoc 表格语法：每个单元格用 | 开头，同一行的单元格用空格分隔
   let tableOutput = '';
+
   rows.forEach((row, rowIndex) => {
-    tableOutput += '\n';
+    // 构建这一行的所有单元格
+    const cellOutputs: string[] = [];
 
     row.forEach((cell) => {
       // 构建合并单元格前缀
-      // AsciiDoc 语法: colspan.rowspan+| (例如 2.3+| 表示横跨2列、纵跨3行)
+      // AsciiDoc 语法:
+      // - colspan: 2+| (跨2列)
+      // - rowspan: .2+| (跨2行)  
+      // - both: 2.3+| (跨2列3行)
       let prefix = '';
 
       if (cell.colspan > 1 && cell.rowspan > 1) {
-        // 同时有 colspan 和 rowspan
         prefix = `${cell.colspan}.${cell.rowspan}+`;
       } else if (cell.colspan > 1) {
-        // 只有 colspan
         prefix = `${cell.colspan}+`;
       } else if (cell.rowspan > 1) {
-        // 只有 rowspan
         prefix = `.${cell.rowspan}+`;
       }
 
-      tableOutput += `${prefix}| ${cell.text} `;
+      cellOutputs.push(`${prefix}| ${cell.text}`);
     });
 
-    // 标题行后添加空行（AsciiDoc 语法要求）
-    if (rowIndex === 0) {
+    // 所有单元格放在同一行
+    tableOutput += cellOutputs.join(' ') + '\n';
+
+    // 表头行后需要空行
+    if (rowIndex === 0 && hasHeader) {
       tableOutput += '\n';
     }
   });
 
   // 生成 AsciiDoc 表格
   const captionLine = captionText ? `.${captionText}\n` : '';
-  return `${captionLine}[cols="${colDef}", options="header"]\n|===${tableOutput}\n|===\n\n`;
+  const headerOption = hasHeader ? ', options="header"' : '';
+  return `${captionLine}[cols="${colDef}"${headerOption}]\n|===\n${tableOutput}|===\n\n`;
 };
 
 /**

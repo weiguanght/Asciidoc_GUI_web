@@ -1,16 +1,17 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Heading1, Heading2, Heading3, List, ListOrdered,
   Code, Quote, Download, Upload, Image as ImageIcon, Table as TableIcon,
   Underline, Strikethrough, Palette, Highlighter, Link as LinkIcon,
   Undo, Redo, Minus, X, Combine, SplitSquareHorizontal,
-  Plus, Trash2, RowsIcon, ColumnsIcon, ChevronDown
+  Plus, Trash2, RowsIcon, ColumnsIcon, ChevronDown, Search
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useEditorStore } from '../store/useEditorStore';
 import { ViewMode } from '../types';
 import { adocToHtml } from '../lib/asciidoc';
+import { exportAsZip } from '../lib/zip-export';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -99,43 +100,138 @@ const ImageDialog: React.FC<{
   onClose: () => void;
   onSubmit: (url: string, alt: string) => void;
 }> = ({ isOpen, onClose, onSubmit }) => {
-  const [url, setUrl] = useState('https://source.unsplash.com/random/800x400');
+  const [activeTab, setActiveTab] = useState<'url' | 'upload'>('url');
+  const [url, setUrl] = useState('');
   const [alt, setAlt] = useState('');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setUploadedImage(dataUrl);
+        setUploadedFileName(file.name);
+        if (!alt) {
+          setAlt(file.name.replace(/\.[^/.]+$/, ''));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (url) {
+    if (activeTab === 'url' && url) {
       onSubmit(url, alt);
-      setUrl('https://source.unsplash.com/random/800x400');
-      setAlt('');
+      resetForm();
+    } else if (activeTab === 'upload' && uploadedImage) {
+      onSubmit(uploadedImage, alt);
+      resetForm();
     }
+  };
+
+  const resetForm = () => {
+    setUrl('');
+    setAlt('');
+    setUploadedImage(null);
+    setUploadedFileName('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-50" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-50 w-96">
+      <div className="fixed inset-0 bg-black/30 z-50" onClick={handleClose} />
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 z-50 w-[420px]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Insert Image</h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <button onClick={handleClose} className="p-1 hover:bg-gray-100 rounded">
             <X size={18} className="text-gray-500" />
           </button>
         </div>
+
+        {/* Tab 切换 */}
+        <div className="flex gap-1 mb-4 p-1 bg-gray-100 rounded-lg">
+          <button
+            type="button"
+            onClick={() => setActiveTab('url')}
+            className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'url'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+              }`}
+          >
+            From URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('upload')}
+            className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${activeTab === 'upload'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+              }`}
+          >
+            Upload Local
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                autoFocus
-              />
-            </div>
+            {activeTab === 'url' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Image</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full px-4 py-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors text-center"
+                >
+                  {uploadedImage ? (
+                    <div className="space-y-2">
+                      <img
+                        src={uploadedImage}
+                        alt="Preview"
+                        className="max-h-32 mx-auto rounded"
+                      />
+                      <p className="text-sm text-gray-600">{uploadedFileName}</p>
+                      <p className="text-xs text-blue-600">Click to choose another</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload size={32} className="mx-auto text-gray-400" />
+                      <p className="text-sm text-gray-600">Click to select image</p>
+                      <p className="text-xs text-gray-400">PNG, JPG, GIF, WebP</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Alt Text (optional)</label>
               <input
@@ -150,14 +246,15 @@ const ImageDialog: React.FC<{
           <div className="flex justify-end gap-2 mt-6">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+              disabled={(activeTab === 'url' && !url) || (activeTab === 'upload' && !uploadedImage)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Insert
             </button>
@@ -169,13 +266,25 @@ const ImageDialog: React.FC<{
 };
 
 export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
-  const { toggleViewMode, viewMode, sourceContent, importFile, toolbarVisible, darkMode, files, activeFileId } = useEditorStore();
+  const { toggleViewMode, viewMode, sourceContent, importFile, toolbarVisible, darkMode, files, activeFileId, openSearchDialog } = useEditorStore();
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
 
   const activeFile = files.find(f => f.id === activeFileId);
+
+  // 全局快捷键：Ctrl/Cmd + F 打开搜索
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        openSearchDialog();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openSearchDialog]);
 
   if (!editor) return null;
 
@@ -190,6 +299,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setExportMenuOpen(false);
+  };
+
+  const handleExportZip = async () => {
+    const baseName = activeFile?.name?.replace('.adoc', '') || 'document';
+    await exportAsZip(baseName, sourceContent);
     setExportMenuOpen(false);
   };
 
@@ -582,6 +697,13 @@ ${html}
                       }`}
                   >
                     Export as .html
+                  </button>
+                  <button
+                    onClick={handleExportZip}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                  >
+                    Export as .zip (with images)
                   </button>
                 </div>
               </>

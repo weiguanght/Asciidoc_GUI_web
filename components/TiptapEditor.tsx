@@ -15,6 +15,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { TableCaption } from '../extensions/TableCaption';
 import { useEditorStore } from '../store/useEditorStore';
 import { jsonToAdoc, adocToHtml } from '../lib/asciidoc';
+import { renderMermaidDiagrams } from '../lib/asciidoctor-renderer';
+import { convertToAdoc } from '../lib/paste-converter';
 import { Toolbar } from './Toolbar';
 import { SourceEditor } from './SourceEditor';
 import { ViewMode } from '../types';
@@ -117,7 +119,71 @@ export const TiptapEditor: React.FC = () => {
         class: 'prose prose-slate max-w-none focus:outline-none min-h-[500px]',
       },
       handlePaste: (view, event, slice) => {
-        const html = event.clipboardData?.getData('text/html');
+        const html = event.clipboardData?.getData('text/html') || '';
+        const text = event.clipboardData?.getData('text/plain') || '';
+
+        console.log('[TiptapEditor Paste] HTML:', html.substring(0, 100));
+        console.log('[TiptapEditor Paste] Text:', text.substring(0, 100));
+
+        // 检查 Markdown 特征
+        const hasMarkdownFeatures =
+          /^#{1,6}\s/m.test(text) ||           // 标题
+          /\*\*[^*]+\*\*/.test(text) ||         // 粗体
+          /__[^_]+__/.test(text) ||             // 粗体
+          /\[([^\]]+)\]\(([^)]+)\)/.test(text) || // 链接
+          /!\[([^\]]*)\]\(([^)]+)\)/.test(text) || // 图片
+          /```/.test(text) ||                   // 代码块
+          /^[-*]\s/m.test(text) ||              // 无序列表
+          /^\d+\.\s/m.test(text) ||             // 有序列表
+          /^>\s/m.test(text);                   // 引用
+
+        if (hasMarkdownFeatures) {
+          console.log('[TiptapEditor Paste] Detected Markdown, converting to HTML...');
+
+          // 将 Markdown 转换为 HTML（保留富文本格式）
+          let htmlContent = text;
+
+          // 标题
+          htmlContent = htmlContent.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+          htmlContent = htmlContent.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+          htmlContent = htmlContent.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+          htmlContent = htmlContent.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+          htmlContent = htmlContent.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+          htmlContent = htmlContent.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+          // 粗体和斜体
+          htmlContent = htmlContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+          htmlContent = htmlContent.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+          htmlContent = htmlContent.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+          htmlContent = htmlContent.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
+
+          // 行内代码
+          htmlContent = htmlContent.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+          // 链接
+          htmlContent = htmlContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+          // 无序列表项
+          htmlContent = htmlContent.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+
+          // 有序列表项
+          htmlContent = htmlContent.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+
+          // 段落（非标题、非列表的行）
+          htmlContent = htmlContent.split('\n').map(line => {
+            if (!line.trim()) return '<p></p>';
+            if (line.startsWith('<')) return line;
+            return `<p>${line}</p>`;
+          }).join('');
+
+          const editorInstance = (window as any).__tiptapEditor;
+          if (editorInstance) {
+            editorInstance.chain().focus().insertContent(htmlContent).run();
+            return true;
+          }
+        }
+
+        // 处理 HTML 表格
         if (html && html.includes('<table')) {
           // 解析 HTML 表格
           const parser = new DOMParser();
@@ -141,10 +207,6 @@ export const TiptapEditor: React.FC = () => {
 
             if (tableData.length > 0) {
               const colCount = Math.max(...tableData.map(row => row.length));
-
-              // 使用 Tiptap 的表格命令插入表格
-              const editor = view.state.schema;
-              view.dispatch(view.state.tr);
 
               // 创建 Tiptap 表格 HTML
               let tableHtml = '<table>';
@@ -172,6 +234,8 @@ export const TiptapEditor: React.FC = () => {
             }
           }
         }
+
+        // 让 Tiptap 默认处理其他 HTML 内容
         return false;
       },
     },
@@ -190,13 +254,81 @@ export const TiptapEditor: React.FC = () => {
   // Split 模式下左侧使用 dangerouslySetInnerHTML 预览，不需要同步到 Tiptap
   useEffect(() => {
     if (editor && lastSyncedFrom !== 'EDITOR' && viewMode === ViewMode.EDITOR_ONLY) {
-      const html = adocToHtml(sourceContent);
+      const rawHtml = adocToHtml(sourceContent);
+      const processedHtml = processHtmlForTiptap(rawHtml);
       const currentHTML = editor.getHTML();
-      if (currentHTML !== html) {
-        editor.commands.setContent(html, false);
+
+      // 简单比较可能不准确，但可以避免一些不必要的更新
+      if (currentHTML !== processedHtml) {
+        editor.commands.setContent(processedHtml, false);
       }
     }
   }, [sourceContent, editor, lastSyncedFrom, viewMode]);
+
+  /**
+   * 处理 AsciiDoc生成的 HTML，使其适配 Tiptap
+   * 主要将 CSS 类转换为内联样式
+   */
+  const processHtmlForTiptap = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // 处理颜色和背景色
+    const colorMap: Record<string, string> = {
+      'red': 'red',
+      'blue': '#3b82f6', // Tailwind blue-500
+      'green': '#22c55e', // Tailwind green-500
+      'yellow': '#eab308', // Tailwind yellow-500
+      'purple': '#a855f7', // Tailwind purple-500
+      'orange': '#f97316', // Tailwind orange-500
+      'gray': '#6b7280',   // Tailwind gray-500
+      'aqua': '#06b6d4',   // Tailwind cyan-500
+      'black': 'black',
+      'white': 'white',
+    };
+
+    // 查找所有带 class 的 span
+    const spans = doc.querySelectorAll('span[class]');
+    spans.forEach(span => {
+      const classes = Array.from(span.classList);
+      let style = span.getAttribute('style') || '';
+
+      classes.forEach(cls => {
+        // 文本颜色
+        if (colorMap[cls]) {
+          style += `color: ${colorMap[cls]};`;
+        }
+
+        // 背景色
+        if (cls.endsWith('-background')) {
+          const colorName = cls.replace('-background', '');
+          const bgColor = colorMap[colorName] || colorName;
+          style += `background-color: ${bgColor};`;
+        }
+
+        // 下划线
+        if (cls === 'underline') {
+          style += 'text-decoration: underline;';
+        }
+
+        // 删除线
+        if (cls === 'line-through') {
+          style += 'text-decoration: line-through;';
+        }
+
+        // 大号字体
+        if (cls === 'big') {
+          style += 'font-size: 1.25em;';
+        }
+      });
+
+      if (style) {
+        span.setAttribute('style', style);
+      }
+    });
+
+    return doc.body.innerHTML;
+  };
 
   // 处理预览区域点击，触发同步
   const handlePreviewClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -226,6 +358,17 @@ export const TiptapEditor: React.FC = () => {
 
   // 在分屏模式下，使用 Asciidoctor.js 渲染预览
   const renderPreview = viewMode === ViewMode.SPLIT;
+
+  // Mermaid 图表渲染（在 DOM 更新后异步执行）
+  useEffect(() => {
+    if (renderPreview && previewRef.current) {
+      // 延迟执行以确保 DOM 已更新
+      const timer = setTimeout(() => {
+        renderMermaidDiagrams();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [sourceContent, renderPreview]);
 
   return (
     <div className={`flex flex-col h-full ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>

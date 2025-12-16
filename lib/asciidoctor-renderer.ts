@@ -1,13 +1,31 @@
 /**
  * Asciidoctor.js 渲染器
  * 使用 asciidoctor.js 实现完整的 AsciiDoc 语法支持
+ * 支持 Mermaid 图表和 KaTeX 数学公式
  */
 
 import Asciidoctor from 'asciidoctor';
 import hljs from 'highlight.js';
+import mermaid from 'mermaid';
+import katex from 'katex';
+import { processIncludes, hasIncludes } from './include-preprocessor';
+import { FileItem } from '../types';
 
 // 创建 Asciidoctor 实例
 const asciidoctor = Asciidoctor();
+
+// 初始化 Mermaid
+let mermaidInitialized = false;
+const initMermaid = () => {
+    if (!mermaidInitialized) {
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'loose',
+        });
+        mermaidInitialized = true;
+    }
+};
 
 // 注册 highlight.js 语法高亮
 const highlightCode = (code: string, lang: string): string => {
@@ -21,13 +39,41 @@ const highlightCode = (code: string, lang: string): string => {
     return hljs.highlightAuto(code).value;
 };
 
+// 渲染 KaTeX 公式
+const renderKatex = (formula: string, displayMode: boolean = false): string => {
+    try {
+        return katex.renderToString(formula, {
+            displayMode,
+            throwOnError: false,
+            output: 'html',
+        });
+    } catch (e) {
+        console.warn('KaTeX error:', e);
+        return `<span class="katex-error">${formula}</span>`;
+    }
+};
+
+// Mermaid 图表计数器（用于生成唯一 ID）
+let mermaidCounter = 0;
+
 /**
  * 将 AsciiDoc 源码转换为 HTML
  * @param adoc AsciiDoc 源码
+ * @param files 可选的文件列表（用于处理 include 指令）
+ * @param currentFileName 可选的当前文件名（用于检测循环引用）
  * @returns 渲染后的 HTML
  */
-export const adocToHtml = (adoc: string): string => {
+export const adocToHtml = (adoc: string, files?: FileItem[], currentFileName?: string): string => {
     try {
+        initMermaid();
+        mermaidCounter = 0;
+
+        // 预处理 Include 指令
+        let processedAdoc = adoc;
+        if (files && hasIncludes(adoc)) {
+            processedAdoc = processIncludes(adoc, files, currentFileName || '');
+        }
+
         // Asciidoctor 转换选项
         const options = {
             safe: 'safe',
@@ -40,16 +86,83 @@ export const adocToHtml = (adoc: string): string => {
                 'experimental': true,
                 'idprefix': '',
                 'idseparator': '-',
+                'stem': 'latexmath', // 启用 STEM 支持
             },
         };
 
         // 转换 AsciiDoc 到 HTML
-        let html = asciidoctor.convert(adoc, options) as string;
+        let html = asciidoctor.convert(processedAdoc, options) as string;
 
-        // 手动应用代码高亮 (因为在浏览器环境中需要手动处理)
+        // 处理 Mermaid 代码块
+        html = html.replace(
+            /<pre class="highlight"><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+            (match, code) => {
+                const decodedCode = code
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&quot;/g, '"');
+
+                mermaidCounter++;
+                const mermaidId = `mermaid-${mermaidCounter}-${Date.now()}`;
+
+                // 返回一个占位 div，将在客户端渲染
+                return `<div class="mermaid-container" data-mermaid-id="${mermaidId}">
+                    <pre class="mermaid">${decodedCode}</pre>
+                </div>`;
+            }
+        );
+
+        // 处理内联 STEM 公式: stem:[...]
+        html = html.replace(
+            /stem:\[([^\]]+)\]/g,
+            (match, formula) => {
+                const decodedFormula = formula
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&');
+                return `<span class="math-inline">${renderKatex(decodedFormula, false)}</span>`;
+            }
+        );
+
+        // 处理 STEM 块 (latexmath 块)
+        html = html.replace(
+            /<div class="stemblock">\s*<div class="content">\s*\\?\[([^\]]*)\]\s*([\s\S]*?)\s*<\/div>\s*<\/div>/g,
+            (match, type, formula) => {
+                const decodedFormula = formula
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&')
+                    .trim();
+                return `<div class="math-block">${renderKatex(decodedFormula, true)}</div>`;
+            }
+        );
+
+        // 备用：处理简单的 [stem] 块
+        html = html.replace(
+            /<div class="stemblock">\s*<div class="content">\s*([\s\S]*?)\s*<\/div>\s*<\/div>/g,
+            (match, formula) => {
+                const decodedFormula = formula
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&')
+                    .replace(/^\\\[/, '')
+                    .replace(/\\\]$/, '')
+                    .trim();
+                if (decodedFormula) {
+                    return `<div class="math-block">${renderKatex(decodedFormula, true)}</div>`;
+                }
+                return match;
+            }
+        );
+
+        // 手动应用代码高亮 (非 Mermaid 的代码块)
         html = html.replace(
             /<pre class="highlight"><code(?: class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g,
             (match, lang, code) => {
+                // 跳过已处理的 Mermaid
+                if (lang === 'mermaid') return match;
+
                 // 解码 HTML 实体
                 const decodedCode = code
                     .replace(/&lt;/g, '<')
@@ -64,7 +177,7 @@ export const adocToHtml = (adoc: string): string => {
         );
 
         // 解析源码行号映射
-        const lineMap = buildSourceLineMap(adoc);
+        const lineMap = buildSourceLineMap(processedAdoc);
 
         // 给每个块级元素添加 data-line 属性用于同步定位
         html = addDataLineAttributes(html, lineMap);
@@ -73,6 +186,20 @@ export const adocToHtml = (adoc: string): string => {
     } catch (error) {
         console.error('Asciidoctor conversion error:', error);
         return `<div class="error">渲染错误: ${error}</div>`;
+    }
+};
+
+/**
+ * 在 DOM 中渲染 Mermaid 图表（需要在组件挂载后调用）
+ */
+export const renderMermaidDiagrams = async (): Promise<void> => {
+    initMermaid();
+    try {
+        await mermaid.run({
+            querySelector: '.mermaid',
+        });
+    } catch (e) {
+        console.warn('Mermaid render error:', e);
     }
 };
 

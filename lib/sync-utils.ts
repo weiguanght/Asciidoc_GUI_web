@@ -171,3 +171,132 @@ export const createLineHighlightOverlay = (lineNumber: number, lineHeight: numbe
   `;
     return overlay;
 };
+
+/**
+ * 计算元素的滚动百分比
+ * @param element 可滚动元素
+ * @returns 滚动百分比 (0-1)
+ */
+export const getScrollPercentage = (element: HTMLElement): number => {
+    const scrollHeight = element.scrollHeight - element.clientHeight;
+    if (scrollHeight <= 0) return 0;
+    return element.scrollTop / scrollHeight;
+};
+
+/**
+ * 根据滚动百分比设置元素的滚动位置
+ * @param element 可滚动元素
+ * @param percentage 滚动百分比 (0-1)
+ * @param smooth 是否平滑滚动
+ */
+export const setScrollPercentage = (
+    element: HTMLElement,
+    percentage: number,
+    smooth: boolean = false
+): void => {
+    const scrollHeight = element.scrollHeight - element.clientHeight;
+    const targetScroll = Math.max(0, Math.min(scrollHeight, percentage * scrollHeight));
+
+    if (smooth) {
+        element.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    } else {
+        element.scrollTop = targetScroll;
+    }
+};
+
+/**
+ * 创建防抖函数
+ * @param fn 要防抖的函数
+ * @param delay 延迟时间 (毫秒)
+ * @returns 防抖后的函数
+ */
+export const debounce = <T extends (...args: any[]) => any>(
+    fn: T,
+    delay: number
+): ((...args: Parameters<T>) => void) => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (...args: Parameters<T>) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(...args), delay);
+    };
+};
+
+/**
+ * 创建节流函数
+ * @param fn 要节流的函数
+ * @param limit 时间限制 (毫秒)
+ * @returns 节流后的函数
+ */
+export const throttle = <T extends (...args: any[]) => any>(
+    fn: T,
+    limit: number
+): ((...args: Parameters<T>) => void) => {
+    let inThrottle = false;
+    return (...args: Parameters<T>) => {
+        if (!inThrottle) {
+            fn(...args);
+            inThrottle = true;
+            setTimeout(() => { inThrottle = false; }, limit);
+        }
+    };
+};
+
+/**
+ * 同步滚动管理器
+ * 用于管理两个可滚动区域之间的同步滚动
+ */
+export class ScrollSyncManager {
+    private sourceElement: HTMLElement | null = null;
+    private targetElement: HTMLElement | null = null;
+    private isSyncing = false;
+    private syncDelay = 16; // ~60fps
+
+    constructor(
+        source: HTMLElement | null = null,
+        target: HTMLElement | null = null
+    ) {
+        this.sourceElement = source;
+        this.targetElement = target;
+    }
+
+    /**
+     * 设置源和目标元素
+     */
+    setElements(source: HTMLElement, target: HTMLElement): void {
+        this.sourceElement = source;
+        this.targetElement = target;
+    }
+
+    /**
+     * 从源同步到目标
+     */
+    syncFromSource(): void {
+        if (!this.sourceElement || !this.targetElement || this.isSyncing) return;
+
+        this.isSyncing = true;
+        const percentage = getScrollPercentage(this.sourceElement);
+        setScrollPercentage(this.targetElement, percentage);
+
+        setTimeout(() => { this.isSyncing = false; }, this.syncDelay);
+    }
+
+    /**
+     * 从目标同步到源
+     */
+    syncFromTarget(): void {
+        if (!this.sourceElement || !this.targetElement || this.isSyncing) return;
+
+        this.isSyncing = true;
+        const percentage = getScrollPercentage(this.targetElement);
+        setScrollPercentage(this.sourceElement, percentage);
+
+        setTimeout(() => { this.isSyncing = false; }, this.syncDelay);
+    }
+
+    /**
+     * 检查当前是否在同步中
+     */
+    isCurrentlySyncing(): boolean {
+        return this.isSyncing;
+    }
+}

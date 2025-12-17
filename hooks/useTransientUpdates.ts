@@ -30,13 +30,13 @@ export const useTransientContent = () => {
     const isDirtyRef = useRef<boolean>(false);
 
     // 同步到 Store
-    const syncToStore = useCallback((content: string, source: 'SOURCE' | 'TIPTAP') => {
+    const syncToStore = useCallback((content: string, source: 'EDITOR' | 'SOURCE') => {
         setSourceContent(content, source);
         isDirtyRef.current = false;
     }, [setSourceContent]);
 
     // 更新内容（防抖同步）
-    const updateContent = useCallback((content: string, source: 'SOURCE' | 'TIPTAP') => {
+    const updateContent = useCallback((content: string, source: 'EDITOR' | 'SOURCE') => {
         // 立即更新 Ref（瞬时）
         contentRef.current = content;
         isDirtyRef.current = true;

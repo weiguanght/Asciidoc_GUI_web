@@ -270,3 +270,214 @@
         visibility: visible !important;
     }
 }
+
+/* ============ Linting 样式 (行级高亮) ============ */
+
+/* 错误行 - 红色 */
+.lint-line.lint-error {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border-left: 3px solid #ef4444 !important;
+    margin-left: -3px;
+    padding-left: 3px;
+}
+
+/* 警告行 - 橙色 */
+.lint-line.lint-warning {
+    background: rgba(245, 158, 11, 0.1) !important;
+    border-left: 3px solid #f59e0b !important;
+    margin-left: -3px;
+    padding-left: 3px;
+}
+
+/* 信息行 - 蓝色 */
+.lint-line.lint-info {
+    background: rgba(59, 130, 246, 0.05) !important;
+    border-left: 3px solid #3b82f6 !important;
+    margin-left: -3px;
+    padding-left: 3px;
+}
+
+/* Tooltip 样式 */
+.lint-tooltip {
+    position: absolute;
+    background: #1e293b;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    max-width: 300px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.lint-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 16px;
+    border: 6px solid transparent;
+    border-bottom-color: #1e293b;
+}
+
+/* ============ RawBlock 样式 ============ */
+
+.raw-block {
+    background: #f8fafc;
+    border: 1px dashed #94a3b8;
+    border-radius: 6px;
+    margin: 12px 0;
+    padding: 12px;
+    position: relative;
+}
+
+.raw-block-label {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    background: #f8fafc;
+    padding: 0 6px;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.raw-block-source {
+    background: #f1f5f9;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    color: #475569;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+/* 暗色模式 */
+.dark .lint-line.lint-error {
+    background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.dark .lint-line.lint-warning {
+    background: rgba(245, 158, 11, 0.15) !important;
+}
+
+.dark .lint-line.lint-info {
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.dark .raw-block {
+    background: #1e293b;
+    border-color: #475569;
+}
+
+.dark .raw-block-label {
+    background: #1e293b;
+    color: #94a3b8;
+}
+
+.dark .raw-block-source {
+    background: #0f172a;
+    color: #94a3b8;
+}
+
+/* ============ BlockWrapper 样式 (Notion 风格) ============ */
+
+.block-wrapper {
+    position: relative;
+    padding-left: 4px;
+    margin-left: 48px;
+    transition: background-color 0.15s ease;
+}
+
+.block-wrapper:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.block-wrapper-selected {
+    background-color: rgba(59, 130, 246, 0.08) !important;
+}
+
+.block-wrapper-dragging {
+    opacity: 0.5;
+}
+
+/* 控件区域 */
+.block-controls {
+    height: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.block-add-button,
+.block-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+}
+
+.block-add-button:hover,
+.block-drag-handle:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.block-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* NodeView 样式 */
+.block-node-view {
+    position: relative;
+}
+
+/* 暗色模式 */
+.dark .block-wrapper:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dark .block-wrapper-selected {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.dark .block-add-button:hover,
+.dark .block-drag-handle:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 拖拽放置指示器 */
+.block-drop-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #3b82f6;
+    pointer-events: none;
+}
+
+.block-drop-indicator-before {
+    top: -1px;
+}
+
+.block-drop-indicator-after {
+    bottom: -1px;
+}
+
+/* BlockMenu 样式 */
+.block-menu {
+    animation: block-menu-fade-in 0.15s ease;
+}
+
+@keyframes block-menu-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -150,7 +150,7 @@ interface OutlineNavigatorProps {
 export const OutlineNavigator: React.FC<OutlineNavigatorProps> = ({ className = '' }) => {
     const { sourceContent, highlightLine, setHighlightLine, darkMode, viewMode } = useEditorStore();
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-    const [viewSource, setViewSource] = useState<'source' | 'preview'>('source');
+    const [viewSource, setViewSource] = useState<'source' | 'editor'>('source');
 
     // 提取大纲
     const outline = useMemo(() => extractOutline(sourceContent), [sourceContent]);
@@ -242,10 +242,10 @@ export const OutlineNavigator: React.FC<OutlineNavigatorProps> = ({ className = 
                             <Code2 size={10} />
                         </button>
                         <button
-                            onClick={() => setViewSource('preview')}
+                            onClick={() => setViewSource('editor')}
                             className={`
                 px-1.5 py-0.5 rounded transition-colors
-                ${viewSource === 'preview'
+                ${viewSource === 'editor'
                                     ? darkMode ? 'bg-slate-600 text-slate-200' : 'bg-white text-gray-700 shadow-sm'
                                     : darkMode ? 'text-slate-400' : 'text-gray-500'
                                 }

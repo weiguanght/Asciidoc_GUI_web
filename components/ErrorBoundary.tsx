@@ -20,14 +20,15 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+    state: State = {
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        reportCopied: false,
+    };
+
     constructor(props: Props) {
         super(props);
-        this.state = {
-            hasError: false,
-            error: null,
-            errorInfo: null,
-            reportCopied: false,
-        };
     }
 
     static getDerivedStateFromError(error: Error): Partial<State> {
@@ -153,8 +154,8 @@ export class ErrorBoundary extends Component<Props, State> {
                             <button
                                 onClick={this.handleCopyReport}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${this.state.reportCopied
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
                                     }`}
                             >
                                 <span className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-sm font-bold">1</span>

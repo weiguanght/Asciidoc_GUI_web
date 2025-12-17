@@ -4,7 +4,7 @@
  */
 
 import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { ReactNodeViewRenderer, NodeViewProps } from '@tiptap/react';
 import React from 'react';
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { AlertCircle, Info, Lightbulb, AlertTriangle, ShieldAlert, Flame } from 'lucide-react';
@@ -57,18 +57,8 @@ const admonitionConfig: Record<AdmonitionType, {
     },
 };
 
-// Admonition 组件
-interface AdmonitionComponentProps {
-    node: {
-        attrs: {
-            type: AdmonitionType;
-        };
-    };
-    updateAttributes: (attrs: Record<string, unknown>) => void;
-    deleteNode: () => void;
-}
-
-const AdmonitionComponent: React.FC<AdmonitionComponentProps> = ({ node, updateAttributes }) => {
+// Admonition 组件 - 使用 NodeViewProps
+const AdmonitionComponent: React.FC<NodeViewProps> = ({ node, updateAttributes }) => {
     const type = (node.attrs.type || 'NOTE') as AdmonitionType;
     const config = admonitionConfig[type] || admonitionConfig.NOTE;
     const IconComponent = config.icon;
@@ -78,50 +68,50 @@ const AdmonitionComponent: React.FC<AdmonitionComponentProps> = ({ node, updateA
     };
 
     return (
-        <NodeViewWrapper className= "admonition-wrapper my-4" >
-        <div className={
-            `
+        <NodeViewWrapper className="admonition-wrapper my-4" >
+            <div className={
+                `
         flex rounded-lg border-l-4 p-4
         ${config.bgColor} ${config.borderColor}
         transition-all duration-200
       `}>
-        {/* 图标区域 */ }
-        < div className = {`flex-shrink-0 mr-3 ${config.iconColor}`
-}>
-    <IconComponent size={ 24 } />
-        </div>
+                {/* 图标区域 */}
+                < div className={`flex-shrink-0 mr-3 ${config.iconColor}`
+                }>
+                    <IconComponent size={24} />
+                </div>
 
-{/* 内容区域 */ }
-<div className="flex-1 min-w-0" >
-    {/* 标题行 */ }
-    < div className = "flex items-center gap-2 mb-2" >
-        <select
-              value={ type }
-onChange = { handleTypeChange }
-className = {`
+                {/* 内容区域 */}
+                <div className="flex-1 min-w-0" >
+                    {/* 标题行 */}
+                    < div className="flex items-center gap-2 mb-2" >
+                        <select
+                            value={type}
+                            onChange={handleTypeChange}
+                            className={`
                 text-sm font-semibold uppercase tracking-wide
                 bg-transparent border-none cursor-pointer
                 ${config.iconColor}
                 focus:outline-none focus:ring-0
               `}
-contentEditable = { false}
-    >
-{
-    Object.keys(admonitionConfig).map((t) => (
-        <option key= { t } value = { t } >
-        { admonitionConfig[t as AdmonitionType].title }
-        </option>
-    ))
-}
-    </select>
-    </div>
+                            contentEditable={false}
+                        >
+                            {
+                                Object.keys(admonitionConfig).map((t) => (
+                                    <option key={t} value={t} >
+                                        {admonitionConfig[t as AdmonitionType].title}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </div>
 
-{/* 可编辑内容 */ }
-<NodeViewContent className="prose prose-sm dark:prose-invert max-w-none" />
-    </div>
-    </div>
-    </NodeViewWrapper>
-  );
+                    {/* 可编辑内容 */}
+                    <NodeViewContent className="prose prose-sm dark:prose-invert max-w-none" />
+                </div>
+            </div>
+        </NodeViewWrapper>
+    );
 };
 
 // Tiptap Node 定义
@@ -178,7 +168,7 @@ export const AdmonitionNode = Node.create({
 
     addCommands() {
         return {
-            setAdmonition: (type: AdmonitionType = 'NOTE') => ({ commands }) => {
+            setAdmonition: (type: AdmonitionType = 'NOTE') => ({ commands }: { commands: any }) => {
                 return commands.insertContent({
                     type: this.name,
                     attrs: { type },
@@ -190,7 +180,7 @@ export const AdmonitionNode = Node.create({
                     ],
                 });
             },
-            toggleAdmonition: (type: AdmonitionType = 'NOTE') => ({ commands, state }) => {
+            toggleAdmonition: (type: AdmonitionType = 'NOTE') => ({ commands, state }: { commands: any; state: any }) => {
                 const { selection } = state;
                 const node = state.doc.nodeAt(selection.from);
 
@@ -201,14 +191,14 @@ export const AdmonitionNode = Node.create({
 
                 return commands.wrapIn(this.name, { type });
             },
-        };
+        } as any;
     },
 
     addKeyboardShortcuts() {
         return {
-            'Mod-Shift-n': () => this.editor.commands.setAdmonition('NOTE'),
-            'Mod-Shift-t': () => this.editor.commands.setAdmonition('TIP'),
-            'Mod-Shift-w': () => this.editor.commands.setAdmonition('WARNING'),
+            'Mod-Shift-n': () => (this.editor.commands as any).setAdmonition('NOTE'),
+            'Mod-Shift-t': () => (this.editor.commands as any).setAdmonition('TIP'),
+            'Mod-Shift-w': () => (this.editor.commands as any).setAdmonition('WARNING'),
         };
     },
 });

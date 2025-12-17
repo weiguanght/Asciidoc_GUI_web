@@ -16,6 +16,7 @@ import { TableCaption } from '../extensions/TableCaption';
 import { AdmonitionNode } from '../extensions/admonition-node';
 import { IncludeNode } from '../extensions/include-node';
 import { SlashCommands } from '../extensions/slash-commands';
+import { UniqueIdExtension } from '../extensions/UniqueId';
 import { useEditorStore } from '../store/useEditorStore';
 import { jsonToAdoc, adocToHtml } from '../lib/asciidoc';
 import { renderMermaidDiagrams } from '../lib/asciidoctor-renderer';
@@ -58,18 +59,18 @@ const FontSize = Extension.create({
   },
   addCommands() {
     return {
-      setFontSize: fontSize => ({ chain }) => {
+      setFontSize: (fontSize: string) => ({ chain }: { chain: any }) => {
         return chain()
           .setMark('textStyle', { fontSize })
           .run();
       },
-      unsetFontSize: () => ({ chain }) => {
+      unsetFontSize: () => ({ chain }: { chain: any }) => {
         return chain()
           .setMark('textStyle', { fontSize: null })
           .removeEmptyTextStyle()
           .run();
       },
-    };
+    } as any;
   },
 });
 
@@ -93,6 +94,7 @@ export const TiptapEditor: React.FC = () => {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      UniqueIdExtension,
       Image,
       Table.configure({
         resizable: true,

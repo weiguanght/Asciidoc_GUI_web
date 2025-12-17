@@ -93,7 +93,7 @@ export const TableEditor: React.FC<TableEditorProps> = ({
     const mergeCells = useCallback(() => {
         if (selectedCells.size < 2) return;
 
-        const selected = Array.from(selectedCells).map(key => {
+        const selected = Array.from(selectedCells).map((key: string) => {
             const [row, col] = key.split('-').map(Number);
             return { row, col };
         });
@@ -199,8 +199,8 @@ export const TableEditor: React.FC<TableEditorProps> = ({
                         onClick={mergeCells}
                         disabled={selectedCells.size < 2}
                         className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${selectedCells.size >= 2
-                                ? darkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'
-                                : darkMode ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
+                            ? darkMode ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'
+                            : darkMode ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
                             }`}
                     >
                         <Merge size={14} /> Merge

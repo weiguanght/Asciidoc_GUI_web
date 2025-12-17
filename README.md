@@ -1,13 +1,13 @@
 # AsciiDoc WYSIWYG Editor
 
-![React](https://img.shields.io/badge/React-20232a?style=for-the-badge&logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Zustand](https://img.shields.io/badge/Zustand-443E38?style=for-the-badge&logo=react&logoColor=white)
-![Asciidoctor](https://img.shields.io/badge/Asciidoctor-E40046?style=for-the-badge&logo=asciidoctor&logoColor=white)
-![CodeMirror](https://img.shields.io/badge/CodeMirror-D32F2F?style=for-the-badge&logo=codemirror&logoColor=white)
-![Tiptap](https://img.shields.io/badge/Tiptap-000000?style=for-the-badge&logo=tiptap&logoColor=white)
-![Vitest](https://img.shields.io/badge/Vitest-729B1B?style=for-the-badge&logo=vitest&logoColor=white)
+![React](https://img.shields.io/badge/React-20232a)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC)
+![Vite](https://img.shields.io/badge/Vite-646CFF)
+![Zustand](https://img.shields.io/badge/Zustand-443E38)
+![Asciidoctor](https://img.shields.io/badge/Asciidoctor-E40046)
+![CodeMirror](https://img.shields.io/badge/CodeMirror-D32F2F)
+![Tiptap](https://img.shields.io/badge/Tiptap-000000)
+![Vitest](https://img.shields.io/badge/Vitest-729B1B)
 
 这是一个基于 Web 的现代化 AsciiDoc 编辑器，旨在提供流畅的写作体验和强大的实时预览功能。该项目采用 React 19 和 Vite 构建，集成了 Asciidoctor.js 核心，支持双向同步滚动、图表渲染、数学公式以及本地文件系统访问。
 

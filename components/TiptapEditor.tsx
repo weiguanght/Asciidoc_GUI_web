@@ -69,7 +69,7 @@ const FontSize = Extension.create({
           .removeEmptyTextStyle()
           .run();
       },
-    } as any;
+    };
   },
 });
 
@@ -86,20 +86,6 @@ export const TiptapEditor: React.FC = () => {
     darkMode,
     editorWidth,
   } = useEditorStore();
-
-  // 计算编辑器/预览区域的宽度类
-  const getContainerWidthClass = () => {
-    if (viewMode === ViewMode.SPLIT) return 'w-full';
-
-    switch (editorWidth) {
-      case 50: return 'w-1/2 mx-auto';
-      case 75: return 'w-3/4 mx-auto';
-      case 100: return 'w-full';
-      default: return 'max-w-3xl mx-auto'; // 默认回退
-    }
-  };
-
-  const containerWidthClass = getContainerWidthClass();
 
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -460,15 +446,15 @@ export const TiptapEditor: React.FC = () => {
             // Asciidoctor.js 渲染的预览（使用 DOMPurify 清洗防止 XSS）
             <div
               ref={previewRef}
-              className={`px-8 py-12 asciidoc-preview ${darkMode ? 'dark-preview' : ''} ${containerWidthClass}`}
+              className={`max-w-4xl mx-auto px-8 py-12 asciidoc-preview ${darkMode ? 'dark-preview' : ''}`}
               onClick={handlePreviewClick}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(adocToHtml(sourceContent)) }}
             />
           ) : (
             // Tiptap 富文本编辑器
-            // Tiptap 富文本编辑器
             <div
-              className={`px-8 py-12 ${containerWidthClass}`}
+              className="mx-auto px-8 py-12 transition-all duration-300"
+              style={{ maxWidth: `${editorWidth}%` }}
               onClick={() => editor.chain().focus().run()}
             >
               <EditorContent editor={editor} />

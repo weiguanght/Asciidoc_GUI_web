@@ -72,7 +72,7 @@ function App() {
       <Sidebar />
 
       {/* 主内容区 */}
-      <main className={`flex-1 flex flex-col h-full overflow-hidden shadow-xl z-0 md:border-t md:border-l md:ml-[-1px] ${darkMode
+      <main className={`flex-1 flex flex-col h-full overflow-hidden shadow-xl z-0 md:rounded-tl-2xl md:border-t md:border-l md:ml-[-1px] ${darkMode
         ? 'bg-slate-850 border-slate-700'
         : 'bg-white border-gray-200'
         }`}>

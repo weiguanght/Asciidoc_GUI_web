@@ -250,6 +250,7 @@ export const useEditorStore = create<EditorState>()(
       toggleToolbar: () => set((state) => ({ toolbarVisible: !state.toolbarVisible })),
       closeSidebar: () => set({ sidebarVisible: false }),
 
+      // 桌面端 UI 操作
       toggleDesktopSidebar: () => set((state) => ({ desktopSidebarVisible: !state.desktopSidebarVisible })),
       setEditorWidth: (width) => set({ editorWidth: width }),
 

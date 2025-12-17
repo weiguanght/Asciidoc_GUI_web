@@ -5,8 +5,7 @@ import {
   Code, Quote, Download, Upload, Image as ImageIcon, Table as TableIcon,
   Underline, Strikethrough, Palette, Highlighter, Link as LinkIcon,
   Undo, Redo, Minus, X, Combine, SplitSquareHorizontal,
-  Plus, Trash2, RowsIcon, ColumnsIcon, ChevronDown, Search,
-  PanelLeftClose, PanelLeftOpen, Monitor
+  Plus, Trash2, RowsIcon, ColumnsIcon, ChevronDown, Search
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useEditorStore } from '../store/useEditorStore';
@@ -14,25 +13,6 @@ import { ViewMode } from '../types';
 import { adocToHtml } from '../lib/asciidoc';
 import { exportAsZip } from '../lib/zip-export';
 import { exportToPdf } from '../lib/pdf-export';
-
-// Custom hook for managing fixed position dropdowns
-const useFixedPosition = (isOpen: boolean) => {
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
-
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setPosition({
-        top: rect.bottom + 4, // 4px offset
-        left: rect.left,
-        width: rect.width
-      });
-    }
-  }, [isOpen]);
-
-  return { triggerRef, position };
-};
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -290,35 +270,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   const {
     toggleViewMode, viewMode, sourceContent, importFile, toolbarVisible, darkMode,
     files, activeFileId, openSearchDialog,
-    desktopSidebarVisible, toggleDesktopSidebar,
-    editorWidth, setEditorWidth
+    desktopSidebarVisible, toggleDesktopSidebar, editorWidth, setEditorWidth
   } = useEditorStore();
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
-
-  // Position hooks for menus
-  // Export Hook (Wide and Narrow)
-  const exportWideHook = useFixedPosition(exportMenuOpen);
-  const exportNarrowHook = useFixedPosition(exportMenuOpen);
-
-  // Width Hook (Wide and Narrow)
-  const widthWideHook = useFixedPosition(viewMenuOpen);
-  const widthNarrowHook = useFixedPosition(viewMenuOpen);
-
-  // Helper to determine which menu position to use (whichever has width > 0)
-  const getPosition = (wideHook: any, narrowHook: any) => {
-    if (wideHook.position.width > 0) return wideHook.position;
-    // Fallback to narrow if wide is hidden
-    if (narrowHook.position.width > 0) return narrowHook.position;
-    // Default fallback
-    return { top: 0, left: 0, width: 0 };
-  };
-
-  const exportPosition = getPosition(exportWideHook, exportNarrowHook);
-
+  const [widthMenuOpen, setWidthMenuOpen] = useState(false);
 
   const activeFile = files.find(f => f.id === activeFileId);
 
@@ -443,105 +401,17 @@ ${html}
     }
   };
 
-  // Drag to scroll logic
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (!scrollContainerRef.current) return;
-    setIsDragging(true);
-    setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
-    setScrollLeft(scrollContainerRef.current.scrollLeft);
-  };
-
-  const handleMouseLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !scrollContainerRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - scrollContainerRef.current.offsetLeft;
-    const walk = (x - startX) * 2; // Scroll-fast
-    scrollContainerRef.current.scrollLeft = scrollLeft - walk;
-  };
-
   return (
     <>
       {/* 桌面端始终显示，移动端根据 toolbarVisible 显示 */}
-      <div
-        ref={scrollContainerRef}
-        className={`
-          toolbar-container
-          min-h-[3.5rem] border-b flex items-center justify-between px-4 sticky top-0 z-40
-          overflow-x-auto overflow-y-hidden no-scrollbar
-          transition-all duration-300 ease-in-out cursor-grab active:cursor-grabbing
-          ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}
-          ${toolbarVisible ? 'max-h-28 opacity-100' : 'max-h-0 opacity-0 overflow-hidden border-b-0 md:max-h-28 md:opacity-100 md:border-b md:overflow-visible'}
-        `}
-        onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-      >
-        <div className="flex items-center gap-1 flex-nowrap md:flex-wrap w-full">
-          {/* Left Desktop Group (Visible on md+, hidden on smaller) */}
-          <div className="hidden md:flex items-center gap-1 border-r border-gray-200 pr-1 mr-1">
-            {/* Sidebar Toggle */}
-            <Button
-              variant="toolbar"
-              onClick={toggleDesktopSidebar}
-              active={desktopSidebarVisible}
-              title={desktopSidebarVisible ? "Hide Sidebar" : "Show Sidebar"}
-            >
-              {desktopSidebarVisible ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-            </Button>
-
-            {/* Width Selector (Only in Editor Mode) */}
-            {viewMode !== ViewMode.SPLIT && (
-              <div className="relative">
-                <Button
-                  ref={widthWideHook.triggerRef}
-                  variant="toolbar"
-                  onClick={() => setViewMenuOpen(!viewMenuOpen)}
-                  title="Page Width"
-                  className="gap-1 px-2 w-auto"
-                >
-                  <Monitor size={16} />
-                  <span className="text-xs font-medium">{editorWidth}%</span>
-                </Button>
-                {viewMenuOpen && widthWideHook.position.width > 0 && (
-                  <>
-                    <div className="fixed inset-0 z-50" onClick={() => setViewMenuOpen(false)} />
-                    <div
-                      className={`fixed z-50 py-1 rounded-lg shadow-xl min-w-[100px] ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'}`}
-                      style={{ top: widthWideHook.position.top, left: widthWideHook.position.left }}
-                    >
-                      {[50, 75, 100].map((width) => (
-                        <button
-                          key={width}
-                          onClick={() => {
-                            setEditorWidth(width as any);
-                            setViewMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                            } ${editorWidth === width ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : ''}`}
-                        >
-                          <span>{width}%</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+      <div className={`
+        toolbar-container
+        h-14 border-b flex items-center justify-between px-4 sticky top-0 z-40 overflow-visible no-scrollbar
+        transition-all duration-300 ease-in-out
+        ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}
+        ${toolbarVisible ? 'max-h-14 opacity-100' : 'max-h-0 opacity-0 overflow-hidden border-b-0 md:max-h-14 md:opacity-100 md:border-b'}
+      `}>
+        <div className="flex items-center gap-1">
           {/* Undo / Redo */}
           <Button
             variant="toolbar"
@@ -721,8 +591,6 @@ ${html}
             <ImageIcon size={18} />
           </Button>
 
-
-
           {/* Table Grid Selector */}
           <div className="relative">
             <Button
@@ -789,157 +657,133 @@ ${html}
           </Button>
         </div>
 
-        <div className="ml-auto flex items-center">
-          {/* Wide Desktop View (lg+) - Standard Row */}
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-gray-50 flex-shrink-0">
-              <button
-                onClick={() => viewMode === ViewMode.EDITOR_ONLY && toggleViewMode()}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === ViewMode.EDITOR_ONLY ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Editor
-              </button>
-              <button
-                onClick={() => viewMode !== ViewMode.SPLIT && toggleViewMode()}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === ViewMode.SPLIT ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Split
-              </button>
-            </div>
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-0.5 bg-gray-50 flex-shrink-0">
+            <button
+              onClick={() => viewMode === ViewMode.SPLIT && toggleViewMode()}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === ViewMode.EDITOR_ONLY ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Editor
+            </button>
+            <button
+              onClick={() => viewMode !== ViewMode.SPLIT && toggleViewMode()}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === ViewMode.SPLIT ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Split
+            </button>
+          </div>
 
-            <Button variant="ghost" onClick={handleImport} className="gap-1.5 flex-shrink-0" title="Import .adoc">
-              <Upload size={16} /> Import
+          <Button variant="ghost" onClick={handleImport} className="gap-1.5 flex-shrink-0" title="Import .adoc">
+            <Upload size={16} /> Import
+          </Button>
+
+          <div className="relative">
+            <Button
+              variant="primary"
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className="gap-2 flex-shrink-0"
+            >
+              <Download size={16} /> Export <ChevronDown size={14} />
             </Button>
-
-            <div className="relative">
-              <Button
-                ref={exportWideHook.triggerRef}
-                variant="primary"
-                onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                className="gap-2 flex-shrink-0"
-              >
-                <Download size={16} /> Export <ChevronDown size={14} />
-              </Button>
-              {exportMenuOpen && exportWideHook.position.width > 0 && (
-                <>
-                  <div className="fixed inset-0 z-50" onClick={() => setExportMenuOpen(false)} />
-                  <div
-                    className={`fixed z-50 py-1 rounded-lg shadow-lg min-w-[140px] ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'}`}
-                    style={{ top: exportPosition.top, right: window.innerWidth - (exportPosition.left + exportPosition.width) }}
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                <div className={`absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[140px] ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'
+                  }`}>
+                  <button
+                    onClick={handleExportAdoc}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
                   >
-                    <button
-                      onClick={handleExportAdoc}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .adoc
-                    </button>
-                    <button
-                      onClick={handleExportHtml}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .html
-                    </button>
-                    <button
-                      onClick={handleExportZip}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .zip (with images)
-                    </button>
-                    <button
-                      onClick={() => {
-                        exportToPdf(sourceContent, activeFile?.name?.replace('.adoc', '.pdf') || 'document.pdf');
-                        setExportMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .pdf
-                    </button>
+                    Export as .adoc
+                  </button>
+                  <button
+                    onClick={handleExportHtml}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                  >
+                    Export as .html
+                  </button>
+                  <button
+                    onClick={handleExportZip}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                  >
+                    Export as .zip (with images)
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportToPdf(sourceContent, activeFile?.name?.replace('.adoc', '.pdf') || 'document.pdf');
+                      setExportMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                  >
+                    Export as .pdf
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 侧边栏切换 - 仅桌面端显示 */}
+          {!desktopSidebarVisible && (
+            <Button
+              variant="toolbar"
+              onClick={toggleDesktopSidebar}
+              title="Show Sidebar"
+              className="hidden md:flex"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </Button>
+          )}
+
+          {/* 页面宽度选择 - 仅非 Split 模式下显示 */}
+          {viewMode !== ViewMode.SPLIT && (
+            <div className="relative hidden md:block">
+              <Button
+                variant="toolbar"
+                onClick={() => setWidthMenuOpen(!widthMenuOpen)}
+                title="Editor Width"
+                className="gap-1 text-xs"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5v4m0-4h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                </svg>
+                {editorWidth}%
+                <ChevronDown size={12} />
+              </Button>
+              {widthMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setWidthMenuOpen(false)} />
+                  <div className={`absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[100px] ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'}`}>
+                    {[50, 75, 100].map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => {
+                          setEditorWidth(w as 50 | 75 | 100);
+                          setWidthMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm ${editorWidth === w
+                            ? darkMode ? 'bg-slate-600 text-blue-400' : 'bg-blue-50 text-blue-600'
+                            : darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                      >
+                        {w}%
+                        {editorWidth === w && (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </>
               )}
             </div>
-          </div>
-
-          {/* Narrow Desktop View (md to lg) - Stacked Grid */}
-          <div className="hidden md:grid lg:hidden grid-cols-[auto_auto] gap-1 items-center h-full">
-            {/* Col 1: Editor/Split (Vertical) */}
-            <div className="flex flex-col gap-0.5 border border-gray-200 rounded p-0.5 bg-gray-50">
-              <button
-                onClick={() => viewMode === ViewMode.SPLIT && toggleViewMode()}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all flex items-center justify-center ${viewMode === ViewMode.EDITOR_ONLY ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Editor
-              </button>
-              <button
-                onClick={() => viewMode !== ViewMode.SPLIT && toggleViewMode()}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all flex items-center justify-center ${viewMode === ViewMode.SPLIT ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-              >
-                Split
-              </button>
-            </div>
-
-            {/* Col 2: Import / Export (Stacked) */}
-            <div className="flex flex-col gap-1">
-              <Button variant="ghost" onClick={handleImport} className="h-6 px-2 text-[10px] gap-1 justify-center w-full" title="Import">
-                <Upload size={12} /> Import
-              </Button>
-              <Button
-                ref={exportNarrowHook.triggerRef}
-                variant="primary"
-                onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                className="h-6 px-2 text-[10px] gap-1 justify-center w-full"
-                title="Export"
-              >
-                <Download size={12} /> Export
-              </Button>
-              {/* Narrow Export Dropdown */}
-              {exportMenuOpen && exportNarrowHook.position.width > 0 && (
-                <>
-                  <div className="fixed inset-0 z-50" onClick={() => setExportMenuOpen(false)} />
-                  <div
-                    className={`fixed z-50 py-1 rounded-lg shadow-lg min-w-[140px] ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'}`}
-                    style={{ top: exportPosition.top, right: window.innerWidth - (exportPosition.left + exportPosition.width) }}
-                  >
-                    <button
-                      onClick={handleExportAdoc}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .adoc
-                    </button>
-                    <button
-                      onClick={handleExportHtml}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .html
-                    </button>
-                    <button
-                      onClick={handleExportZip}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .zip (with images)
-                    </button>
-                    <button
-                      onClick={() => {
-                        exportToPdf(sourceContent, activeFile?.name?.replace('.adoc', '.pdf') || 'document.pdf');
-                        setExportMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
-                        }`}
-                    >
-                      Export as .pdf
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

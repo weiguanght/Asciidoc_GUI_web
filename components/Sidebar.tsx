@@ -50,6 +50,7 @@ export const Sidebar: React.FC = () => {
     sidebarVisible,
     closeSidebar,
     desktopSidebarVisible,
+    toggleDesktopSidebar,
     darkMode,
     toggleDarkMode,
     sourceContent,
@@ -196,7 +197,8 @@ export const Sidebar: React.FC = () => {
           top-0 left-0 bottom-0
           transform transition-all duration-300 ease-in-out
           ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}
-          ${desktopSidebarVisible ? 'md:translate-x-0 md:w-64 md:opacity-100' : 'md:-translate-x-full md:w-0 md:opacity-0 md:overflow-hidden md:border-r-0'}
+          ${!sidebarVisible && desktopSidebarVisible ? 'md:translate-x-0' : ''}
+          ${!desktopSidebarVisible ? 'md:-translate-x-full md:absolute' : ''}
         `}
       >
         {/* 头部 */}
@@ -205,13 +207,23 @@ export const Sidebar: React.FC = () => {
             <span className="bg-blue-600 text-white p-1 rounded text-xs font-black">AD</span>
             <span className={darkMode ? 'text-slate-200' : 'text-slate-800'}>AsciiDoc</span>
           </div>
-          <button
-            onClick={closeSidebar}
-            className={`p-1.5 rounded-lg md:hidden ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-            aria-label="Close sidebar"
-          >
-            <X size={20} className={darkMode ? 'text-slate-400' : 'text-gray-500'} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleDesktopSidebar}
+              className={`p-1.5 rounded-lg hidden md:block ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+              aria-label="Hide sidebar"
+              title="Hide sidebar"
+            >
+              <X size={18} className={darkMode ? 'text-slate-400' : 'text-gray-500'} />
+            </button>
+            <button
+              onClick={closeSidebar}
+              className={`p-1.5 rounded-lg md:hidden ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+              aria-label="Close sidebar"
+            >
+              <X size={20} className={darkMode ? 'text-slate-400' : 'text-gray-500'} />
+            </button>
+          </div>
         </div>
 
         {/* Tab 切换 */}

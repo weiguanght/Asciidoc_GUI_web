@@ -12,6 +12,8 @@ import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { TableCaption } from '../extensions/TableCaption';
 import { AdmonitionNode } from '../extensions/admonition-node';
 import { IncludeNode } from '../extensions/include-node';
@@ -151,47 +153,36 @@ export const TiptapEditor: React.FC = () => {
         if (hasMarkdownFeatures) {
           console.log('[TiptapEditor Paste] Detected Markdown, converting to HTML...');
 
-          // 将 Markdown 转换为 HTML（保留富文本格式）
-          let htmlContent = text;
+          // 使用 marked 库进行 Markdown 转 HTML
+          const rawHtml = marked.parse(text, { async: false }) as string;
+          // 使用 DOMPurify 净化 HTML 防止 XSS
+          const htmlContent = DOMPurify.sanitize(rawHtml);
 
-          // 标题
-          htmlContent = htmlContent.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
-          htmlContent = htmlContent.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
-          htmlContent = htmlContent.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
-          htmlContent = htmlContent.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
-          htmlContent = htmlContent.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
-          htmlContent = htmlContent.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+          // 使用 view 参数插入内容（不使用全局变量）
+          const { state, dispatch } = view;
+          const { tr } = state;
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(htmlContent, 'text/html');
+          const fragment = doc.body.innerHTML;
 
-          // 粗体和斜体
-          htmlContent = htmlContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-          htmlContent = htmlContent.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-          htmlContent = htmlContent.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-          htmlContent = htmlContent.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
+          // 通过 ProseMirror 的 HTMLParser 插入内容
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = fragment;
 
-          // 行内代码
-          htmlContent = htmlContent.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-          // 链接
-          htmlContent = htmlContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-
-          // 无序列表项
-          htmlContent = htmlContent.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
-
-          // 有序列表项
-          htmlContent = htmlContent.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
-
-          // 段落（非标题、非列表的行）
-          htmlContent = htmlContent.split('\n').map(line => {
-            if (!line.trim()) return '<p></p>';
-            if (line.startsWith('<')) return line;
-            return `<p>${line}</p>`;
-          }).join('');
-
-          const editorInstance = (window as any).__tiptapEditor;
-          if (editorInstance) {
-            editorInstance.chain().focus().insertContent(htmlContent).run();
-            return true;
-          }
+          // 让 Tiptap 通过默认机制解析并插入
+          event.preventDefault();
+          const clipboardEvent = new ClipboardEvent('paste', {
+            clipboardData: new DataTransfer(),
+          });
+          clipboardEvent.clipboardData?.setData('text/html', htmlContent);
+          // 直接使用 insertContent 命令
+          setTimeout(() => {
+            const editor = (view as any).editor;
+            if (editor) {
+              editor.chain().focus().insertContent(htmlContent).run();
+            }
+          }, 0);
+          return true;
         }
 
         // 处理 HTML 表格
@@ -225,7 +216,9 @@ export const TiptapEditor: React.FC = () => {
                 tableHtml += '<tr>';
                 row.forEach(cell => {
                   const tag = rowIndex === 0 ? 'th' : 'td';
-                  tableHtml += `<${tag}><p>${cell}</p></${tag}>`;
+                  // 对单元格内容进行转义以防止 XSS
+                  const safeCell = DOMPurify.sanitize(cell);
+                  tableHtml += `<${tag}><p>${safeCell}</p></${tag}>`;
                 });
                 // 填充缺少的单元格
                 for (let i = row.length; i < colCount; i++) {
@@ -236,12 +229,14 @@ export const TiptapEditor: React.FC = () => {
               });
               tableHtml += '</table>';
 
-              // 使用 insertContent 插入表格
-              const editorInstance = (window as any).__tiptapEditor;
-              if (editorInstance) {
-                editorInstance.chain().focus().insertContent(tableHtml).run();
-                return true;
-              }
+              // 使用 view 参数插入表格（不使用全局变量）
+              setTimeout(() => {
+                const editor = (view as any).editor;
+                if (editor) {
+                  editor.chain().focus().insertContent(tableHtml).run();
+                }
+              }, 0);
+              return true;
             }
           }
         }
@@ -256,8 +251,7 @@ export const TiptapEditor: React.FC = () => {
       setSourceContent(adoc, 'EDITOR');
     },
     onCreate: ({ editor }) => {
-      // 保存 editor 实例供粘贴处理使用
-      (window as any).__tiptapEditor = editor;
+      // onCreate 回调 - 不再挂载到全局变量
     },
   });
 

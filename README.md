@@ -51,7 +51,7 @@
 * [Highlight.js](https://highlightjs.org/)
 
 
-* **UI 组件与样式**：Tailwind CSS (推测), Lucide React (图标)
+* **UI 组件与样式**：Tailwind CSS , Lucide React (图标)
 * **测试**：Vitest, React Testing Library
 
 ## 📂 项目结构
@@ -97,7 +97,7 @@ npm run dev
 
 ```
 
-访问 `http://localhost:5173` 即可查看。
+访问 `http://localhost:3000` 即可查看。
 
 ### 构建生产版本
 

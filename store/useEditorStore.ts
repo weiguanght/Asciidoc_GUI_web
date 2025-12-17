@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { FileItem, ViewMode } from '../types';
 import { INITIAL_CONTENT } from '../lib/asciidoc';
 import { openLocalFile, saveLocalFile, saveLocalFileAs } from '../lib/file-system-access';
+import { saveFile, getAllFiles, migrateFromLocalStorage, needsMigration, initDatabase } from '../lib/indexed-db-storage';
 
 // 高亮行信息
 interface HighlightInfo {
@@ -144,6 +145,11 @@ export const useEditorStore = create<EditorState>()(
         const updatedFiles = state.files.map(f =>
           f.id === state.activeFileId ? { ...f, content } : f
         );
+        // 异步写入 IndexedDB
+        const activeFile = updatedFiles.find(f => f.id === state.activeFileId);
+        if (activeFile) {
+          saveFile(activeFile).catch(err => console.error('[IndexedDB] Save error:', err));
+        }
         return {
           sourceContent: content,
           lastSyncedFrom: source,
@@ -323,12 +329,55 @@ export const useEditorStore = create<EditorState>()(
       name: 'asciidoc-editor-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        files: state.files,
+        // files 仅存储元数据，content 由 IndexedDB 管理
+        files: state.files.map(f => ({ ...f, content: '' })),
         activeFileId: state.activeFileId,
         viewMode: state.viewMode,
-        sourceContent: state.sourceContent,
+        // sourceContent 不再持久化到 localStorage
         darkMode: state.darkMode,
       }),
     }
   )
 );
+
+/**
+ * 初始化 Store：从 IndexedDB 加载文件内容
+ * 应在应用启动时调用
+ */
+export async function initializeEditorStore(): Promise<void> {
+  try {
+    // 初始化数据库
+    await initDatabase();
+
+    // 检查是否需要迁移
+    if (await needsMigration()) {
+      console.log('[Store] Migrating from localStorage to IndexedDB...');
+      await migrateFromLocalStorage();
+    }
+
+    // 从 IndexedDB 加载文件内容
+    const idbFiles = await getAllFiles();
+    const state = useEditorStore.getState();
+
+    if (idbFiles.length > 0) {
+      // IndexedDB 有数据，使用它
+      const activeFile = idbFiles.find(f => f.id === state.activeFileId) || idbFiles[0];
+      useEditorStore.setState({
+        files: idbFiles,
+        activeFileId: activeFile?.id || null,
+        sourceContent: activeFile?.content || '',
+      });
+      console.log(`[Store] Loaded ${idbFiles.length} files from IndexedDB`);
+    } else if (state.files.length > 0) {
+      // IndexedDB 为空但 localStorage 有元数据，初始化 IndexedDB
+      for (const file of state.files) {
+        if (file.content) {
+          await saveFile(file);
+        }
+      }
+      console.log(`[Store] Initialized IndexedDB with ${state.files.length} files`);
+    }
+  } catch (error) {
+    console.error('[Store] Initialization error:', error);
+  }
+}

@@ -2,6 +2,7 @@
  * BlockNodeView - 通用块级 NodeView
  * 
  * 使用 ReactNodeViewRenderer 将 BlockWrapper 应用到所有顶级节点
+ * 传递 editor、getPos、nodeSize 给 BlockWrapper 以支持拖拽
  */
 
 import React from 'react';
@@ -67,6 +68,9 @@ export const BlockNodeView: React.FC<BlockNodeViewProps> = ({
                 blockId={blockId}
                 onAddBlock={handleAddBlock}
                 onOpenMenu={handleOpenMenu}
+                editor={editor}
+                getPos={getPos}
+                nodeSize={node.nodeSize}
             >
                 <NodeViewContent />
             </BlockWrapper>

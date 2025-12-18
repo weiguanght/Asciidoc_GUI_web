@@ -13,7 +13,8 @@ import {
     List, ListOrdered,
     Code, Quote, Table2, Image,
     Minus, AlertCircle, FileText,
-    CheckSquare
+    CheckSquare, Info, Lightbulb, AlertTriangle, Flame, ShieldAlert, ChevronRight, Sigma, Smile, Globe,
+    Video, Music
 } from 'lucide-react';
 
 // 命令项定义
@@ -67,6 +68,30 @@ export const slashCommands: CommandItem[] = [
         },
     },
     {
+        title: 'To-do List',
+        description: 'Track tasks with a to-do list',
+        icon: CheckSquare,
+        command: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).toggleTaskList().run();
+        },
+    },
+    {
+        title: 'Toggle List',
+        description: 'Create a collapsible content block',
+        icon: ChevronRight,
+        command: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).setDetails().run();
+        },
+    },
+    {
+        title: 'Math Block',
+        description: 'Insert a math formula (LaTeX)',
+        icon: Sigma,
+        command: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).setMathBlock().run();
+        },
+    },
+    {
         title: 'Code Block',
         description: 'Capture a code snippet',
         icon: Code,
@@ -104,11 +129,77 @@ export const slashCommands: CommandItem[] = [
         },
     },
     {
+        title: 'Video',
+        description: 'Embed a video from URL or YouTube',
+        icon: Video,
+        command: ({ editor, range }) => {
+            const url = window.prompt('Enter Video URL (YouTube or .mp4):');
+            if (url) {
+                editor.chain().focus().deleteRange(range).insertContent({
+                    type: 'video',
+                    attrs: { src: url }
+                }).run();
+            }
+        },
+    },
+    {
+        title: 'Audio',
+        description: 'Embed an audio file',
+        icon: Music,
+        command: ({ editor, range }) => {
+            const url = window.prompt('Enter Audio URL:');
+            if (url) {
+                editor.chain().focus().deleteRange(range).insertContent({
+                    type: 'audio',
+                    attrs: { src: url }
+                }).run();
+            }
+        },
+    },
+    {
+        title: 'File',
+        description: 'Upload or link a file',
+        icon: FileText,
+        command: ({ editor, range }) => {
+            const url = window.prompt('Enter File URL:');
+            if (url) {
+                const title = window.prompt('Enter File Name (optional):') || '';
+                editor.chain().focus().deleteRange(range).insertContent({
+                    type: 'fileBlock',
+                    attrs: { src: url, title: title || url.split('/').pop() }
+                }).run();
+            }
+        },
+    },
+    {
         title: 'Divider',
         description: 'Insert a horizontal divider',
         icon: Minus,
         command: ({ editor, range }) => {
             editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+        },
+    },
+    {
+        title: 'Callout',
+        description: 'Add a callout block with emoji',
+        icon: Smile,
+        command: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).insertContent({
+                type: 'admonition',
+                attrs: { type: 'CALLOUT' },
+                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Enter callout content...' }] }],
+            }).run();
+        },
+    },
+    {
+        title: 'Web Bookmark',
+        description: 'Embed a link as a visual bookmark',
+        icon: Globe,
+        command: ({ editor, range }) => {
+            const url = window.prompt('Enter URL:');
+            if (url) {
+                editor.chain().focus().deleteRange(range).setWebBookmark(url).run();
+            }
         },
     },
     {
@@ -138,12 +229,36 @@ export const slashCommands: CommandItem[] = [
     {
         title: 'Warning',
         description: 'Add a warning admonition',
-        icon: AlertCircle,
+        icon: AlertTriangle,
         command: ({ editor, range }) => {
             editor.chain().focus().deleteRange(range).insertContent({
                 type: 'admonition',
                 attrs: { type: 'WARNING' },
                 content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Enter warning content...' }] }],
+            }).run();
+        },
+    },
+    {
+        title: 'Caution',
+        description: 'Add a caution admonition',
+        icon: Flame,
+        command: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).insertContent({
+                type: 'admonition',
+                attrs: { type: 'CAUTION' },
+                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Enter caution content...' }] }],
+            }).run();
+        },
+    },
+    {
+        title: 'Important',
+        description: 'Add an important admonition',
+        icon: ShieldAlert,
+        command: ({ editor, range }) => {
+            editor.chain().focus().deleteRange(range).insertContent({
+                type: 'admonition',
+                attrs: { type: 'IMPORTANT' },
+                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Enter important content...' }] }],
             }).run();
         },
     },

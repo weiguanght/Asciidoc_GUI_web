@@ -177,6 +177,61 @@ export const adocToHtml = (adoc: string, files?: FileItem[], currentFileName?: s
             }
         );
 
+        // --- Post-Processing for Tiptap Compatibility ---
+
+        // 1. Toggle List / Collapsible
+        // Asciidoctor outputs: <details><summary class="title">...</summary><div class="content">...</div></details>
+        // Tiptap needs: data-details-content on the content div
+        html = html.replace(
+            /(<details[^>]*>[\s\S]*?<div class="content")([^>]*>)/g,
+            '$1 data-details-content=""$2'
+        );
+
+        // 2. Task List / Checklist
+        // Asciidoctor outputs: <div class="ulist checklist"><ul class="checklist">...</ul></div>
+        // Tiptap needs: ul[data-type="taskList"] and li[data-type="taskItem"][data-checked="..."]
+
+        // Step A: Mark ul as taskList
+        html = html.replace(
+            /<ul class="checklist">/g,
+            '<ul class="checklist" data-type="taskList">'
+        );
+
+        // Step B: Transform li items
+        // 匹配 li 和其中的 p 标签，查找 unicode 复选框 (&#10003; checked, &#10063; unchecked)
+        html = html.replace(
+            /<li([^>]*)>\s*<p>\s*(&#10003;|&#10063;)\s*([\s\S]*?)<\/p>\s*<\/li>/g,
+            (match, liAttrs, icon, content) => {
+                const isChecked = icon === '&#10003;';
+                const checkedAttr = isChecked ? 'data-checked="true"' : 'data-checked="false"';
+                // 添加 data-type="taskItem" 和 data-checked
+                return `<li${liAttrs} data-type="taskItem" ${checkedAttr}><p>${content}</p></li>`;
+            }
+        );
+
+        // 3. Color & Background Mapping
+        const COLOR_MAP: Record<string, { text: string; bg: string }> = {
+            red: { text: '#D44C47', bg: '#FBE4E4' },
+            gray: { text: '#9B9A97', bg: '#EBECED' },
+            brown: { text: '#64473A', bg: '#E9E5E3' },
+            orange: { text: '#D9730D', bg: '#FAEBDD' },
+            yellow: { text: '#CB912F', bg: '#FBF3DB' },
+            green: { text: '#448361', bg: '#DDEDEA' },
+            blue: { text: '#337EA9', bg: '#DDEBF1' },
+            purple: { text: '#9065B0', bg: '#EAE4F2' },
+            pink: { text: '#C14C8A', bg: '#F4DFEB' },
+        };
+
+        for (const [name, colors] of Object.entries(COLOR_MAP)) {
+            // Text Color
+            const textRegex = new RegExp(`<span class="${name}">`, 'g');
+            html = html.replace(textRegex, `<span style="color: ${colors.text}">`);
+
+            // Background Color (keep as span, handle in Tiptap)
+            const bgRegex = new RegExp(`<span class="${name}-background">`, 'g');
+            html = html.replace(bgRegex, `<span style="background-color: ${colors.bg}">`);
+        }
+
         // 解析源码行号映射
         const lineMap = buildSourceLineMap(processedAdoc);
 

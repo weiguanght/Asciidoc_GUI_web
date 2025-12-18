@@ -16,6 +16,8 @@ import {
     Share2,
     PanelLeftClose,
     PanelLeftOpen,
+    Lock,
+    Unlock,
 } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
 import { exportToPdf } from '../lib/pdf-export';
@@ -37,6 +39,15 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
         sourceContent,
         desktopSidebarVisible,
         toggleDesktopSidebar,
+        // Page Settings
+        editorFont,
+        smallText,
+        isFullWidth,
+        setEditorFont,
+        toggleSmallText,
+        toggleFullWidth,
+        isLocked,
+        toggleLock,
     } = useEditorStore();
 
     const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -295,14 +306,73 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                     {/* 更多下拉菜单 */}
                     {moreMenuOpen && (
                         <div
-                            className={`absolute right-0 top-full mt-1 w-56 py-1 rounded-lg shadow-xl border z-50 ${darkMode
+                            className={`absolute right-0 top-full mt-1 w-64 py-1 rounded-lg shadow-xl border z-50 ${darkMode
                                 ? 'bg-slate-800 border-slate-700'
                                 : 'bg-white border-gray-200'
                                 }`}
                         >
+                            {/* Style Settings */}
                             <div className={`px-3 py-2 text-xs font-medium ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                Page Settings
+                                Style
                             </div>
+                            <div className="flex px-3 gap-2 mb-2">
+                                {['sans', 'serif', 'mono'].map(font => (
+                                    <button
+                                        key={font}
+                                        onClick={() => setEditorFont(font as any)}
+                                        className={`flex-1 py-1.5 rounded border text-sm capitalize ${editorFont === font
+                                            ? darkMode ? 'bg-blue-900/30 border-blue-500 text-blue-400' : 'bg-blue-50 border-blue-500 text-blue-600'
+                                            : darkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            }`}
+                                        style={{ fontFamily: font === 'mono' ? 'monospace' : font === 'serif' ? 'serif' : 'sans-serif' }}
+                                    >
+                                        {font}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button
+                                onClick={toggleSmallText}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700'}`}
+                            >
+                                <span>Small text</span>
+                                <div className={`w-8 h-4 rounded-full relative transition-colors ${smallText ? 'bg-blue-600' : darkMode ? 'bg-slate-600' : 'bg-gray-300'}`}>
+                                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform`} style={{ left: smallText ? 'calc(100% - 14px)' : '2px' }} />
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={toggleFullWidth}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700'}`}
+                            >
+                                <span>Full width</span>
+                                <div className={`w-8 h-4 rounded-full relative transition-colors ${isFullWidth ? 'bg-blue-600' : darkMode ? 'bg-slate-600' : 'bg-gray-300'}`}>
+                                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform`} style={{ left: isFullWidth ? 'calc(100% - 14px)' : '2px' }} />
+                                </div>
+                            </button>
+
+                            <div className={`my-1 h-px ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`} />
+
+                            <div className={`px-3 py-2 text-xs font-medium ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                                Page Attributes
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    toggleLock();
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${darkMode
+                                    ? 'text-slate-300 hover:bg-slate-700'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    {isLocked ? <Lock size={14} className="text-red-500" /> : <Unlock size={14} />}
+                                    <span>{isLocked ? 'Unlock Page' : 'Lock Page'}</span>
+                                </div>
+                                {isLocked && <span className="text-xs text-red-500 font-medium">Locked</span>}
+                            </button>
+
                             <button
                                 onClick={() => {
                                     setMoreMenuOpen(false);

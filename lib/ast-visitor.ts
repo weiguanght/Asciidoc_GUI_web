@@ -40,6 +40,30 @@ interface VisitorContext {
 /**
  * TiptapJSONVisitor - Visitor 模式 AST 转换器
  */
+// Notion 颜色映射
+export const NOTION_COLOR_MAP: Record<string, string> = {
+    // Text Colors
+    '#9B9A97': 'gray',
+    '#64473A': 'brown',
+    '#D9730D': 'orange',
+    '#CB912F': 'yellow',
+    '#448361': 'green',
+    '#337EA9': 'blue',
+    '#9065B0': 'purple',
+    '#C14C8A': 'pink',
+    '#D44C47': 'red',
+    // Background Colors
+    '#EBECED': 'gray',
+    '#E9E5E3': 'brown',
+    '#FAEBDD': 'orange',
+    '#FBF3DB': 'yellow',
+    '#DDEDEA': 'green',
+    '#DDEBF1': 'blue',
+    '#EAE4F2': 'purple',
+    '#F4DFEB': 'pink',
+    '#FBE4E4': 'red',
+};
+
 export class TiptapJSONVisitor {
     private output: string[] = [];
     private context: VisitorContext;
@@ -128,6 +152,7 @@ export class TiptapJSONVisitor {
             underline: 5,
             strike: 6,
             highlight: 7, // 最内层
+            textStyle: 8, // 文本样式（颜色）
         };
 
         // 降序排序：优先级低的先应用（成为内层），优先级高的后应用（成为外层）
@@ -150,10 +175,31 @@ export class TiptapJSONVisitor {
                 return `[.line-through]#${text}#`;
             case 'link':
                 const href = mark.attrs?.href || '';
+                // 内部锚点
+                if (href.startsWith('#')) {
+                    return `<<${href.substring(1)},${text}>>`;
+                }
+                // 跨文件引用
+                if (href.endsWith('.adoc')) {
+                    return `xref:${href}[${text}]`;
+                }
                 return `${href}[${text}]`;
-            case 'highlight':
-                const color = mark.attrs?.color || 'yellow';
-                return `[.highlight-${color}]#${text}#`;
+            case 'highlight': {
+                const color = mark.attrs?.color;
+                if (color && color.startsWith('#')) {
+                    const colorName = NOTION_COLOR_MAP[color.toUpperCase()] || 'yellow';
+                    return `[.${colorName}-background]#${text}#`;
+                }
+                return `[.highlight-${color || 'yellow'}]#${text}#`;
+            }
+            case 'textStyle': {
+                const color = mark.attrs?.color;
+                if (color && color.startsWith('#')) {
+                    const colorName = NOTION_COLOR_MAP[color.toUpperCase()] || 'black';
+                    return `[.${colorName}]#${text}#`;
+                }
+                return text;
+            }
             default:
                 return text;
         }
@@ -175,6 +221,12 @@ export class TiptapJSONVisitor {
      * 访问标题
      */
     private visitHeading(node: TiptapNode): void {
+        const id = node.attrs?.id;
+        // 如果有 Block ID，生成锚点
+        if (id) {
+            this.output.push(`[#${id}]`);
+        }
+
         const level = node.attrs?.level || 1;
         const prefix = '='.repeat(level + 1); // AsciiDoc 标题从 == 开始
         const text = this.processInlineContent(node.content);
@@ -394,10 +446,17 @@ export class TiptapJSONVisitor {
      * 访问告示块（Admonition）
      */
     private visitAdmonition(node: TiptapNode): void {
-        const type = (node.attrs?.type || 'NOTE').toUpperCase();
+        let type = (node.attrs?.type || 'NOTE').toUpperCase();
+        let attrs = '';
+
+        if (type === 'CALLOUT') {
+            type = 'NOTE';
+            attrs = ', role="callout"';
+        }
+
         this.context.inAdmonition = true;
 
-        this.output.push(`[${type}]`);
+        this.output.push(`[${type}${attrs}]`);
         this.output.push('====');
 
         if (node.content) {
@@ -440,6 +499,193 @@ export class TiptapJSONVisitor {
     }
 
     /**
+     * 访问折叠列表 (Toggle List)
+     */
+    private visitDetails(node: TiptapNode): void {
+        let summary = 'Details';
+        let contentNode: TiptapNode | undefined;
+
+        if (node.content) {
+            for (const child of node.content) {
+                if (child.type === 'detailsSummary') {
+                    summary = this.processInlineContent(child.content);
+                } else if (child.type === 'detailsContent') {
+                    contentNode = child;
+                }
+            }
+        }
+
+        this.output.push('[%collapsible]');
+        this.output.push(`.${summary}`);
+        this.output.push('====');
+
+        if (contentNode && contentNode.content) {
+            for (const child of contentNode.content) {
+                this.visit(child);
+            }
+        }
+
+        // 移除最后的空行
+        if (this.output.length > 0 && this.output[this.output.length - 1] === '') {
+            this.output.pop();
+        }
+
+        this.output.push('====');
+        this.output.push('');
+    }
+
+    /**
+     * 访问任务列表 (Task List)
+     */
+    private visitTaskList(node: TiptapNode): void {
+        const prevListType = this.context.listType;
+        this.context.listType = 'bullet';
+        this.context.listLevel++;
+
+        if (node.content) {
+            for (const item of node.content) {
+                if (item.type === 'taskItem') {
+                    this.visitTaskItem(item);
+                }
+            }
+        }
+
+        this.context.listLevel--;
+        this.context.listType = prevListType;
+
+        if (this.context.listLevel === 0) {
+            this.output.push('');
+        }
+    }
+
+    /**
+     * 访问任务项
+     */
+    private visitTaskItem(node: TiptapNode): void {
+        const marker = '*'.repeat(this.context.listLevel);
+        const checked = node.attrs?.checked ? '[x]' : '[ ]';
+
+        // 任务项通常包含一个段落，但也可能直接包含文本（取决于 schema，这里假设是 block content）
+        if (node.content) {
+            const firstChild = node.content[0];
+            if (firstChild?.type === 'paragraph') {
+                const text = this.processInlineContent(firstChild.content);
+                this.output.push(`${marker} ${checked} ${text}`);
+
+                // 处理嵌套内容
+                for (let i = 1; i < node.content.length; i++) {
+                    this.visit(node.content[i]);
+                }
+            } else {
+                this.output.push(`${marker} ${checked}`);
+                for (const child of node.content) {
+                    this.visit(child);
+                }
+            }
+        } else {
+            this.output.push(`${marker} ${checked}`);
+        }
+    }
+
+    /**
+     * 访问块级数学公式
+     */
+    private visitMathBlock(node: TiptapNode): void {
+        this.output.push('[latexmath]');
+        this.output.push('++++');
+        this.output.push(node.attrs?.latex || '');
+        this.output.push('++++');
+        this.output.push('');
+    }
+
+    /**
+     * 访问视频
+     */
+    private visitVideo(node: TiptapNode): void {
+        const src = node.attrs?.src || '';
+        const title = node.attrs?.title || '';
+        const width = node.attrs?.width || '';
+        const height = node.attrs?.height || '';
+
+        if (title) {
+            this.output.push(`.${title}`);
+        }
+
+        let attrs = '';
+        if (width || height) {
+            const widthAttr = width ? `width=${width}` : '';
+            const heightAttr = height ? `height=${height}` : '';
+            attrs = [widthAttr, heightAttr].filter(Boolean).join(',');
+        }
+
+        this.output.push(`video::${src}[${attrs}]`);
+        this.output.push('');
+    }
+
+    /**
+     * 访问音频
+     */
+    private visitAudio(node: TiptapNode): void {
+        const src = node.attrs?.src || '';
+        const title = node.attrs?.title || '';
+
+        if (title) {
+            this.output.push(`.${title}`);
+        }
+
+        this.output.push(`audio::${src}[]`);
+        this.output.push('');
+    }
+
+    /**
+     * 访问文件块
+     * 转换为 link 并带上 role="file-attachment" 和 metadata
+     */
+    private visitFileBlock(node: TiptapNode): void {
+        const src = node.attrs?.src || '';
+        const title = node.attrs?.title || src.split('/').pop() || 'File';
+        const size = node.attrs?.size || '';
+
+        // 使用 pass-through HTML 以保留完整结构 (如 icon) 及 attributes
+        // 或者使用 link 宏带 role
+        // 这里为了 Round-trip (保留 size 等)，建议使用 HTML passthrough
+        // 类似 Web Bookmark
+
+        this.output.push('++++');
+        let html = `<div class="file-attachment" data-src="${src}"`;
+        if (title) html += ` data-title="${title}"`;
+        if (size) html += ` data-size="${size}"`;
+        html += '></div>';
+
+        this.output.push(html);
+        this.output.push('++++');
+        this.output.push('');
+    }
+
+    /**
+     * 访问 Web Bookmark
+     */
+    private visitWebBookmark(node: TiptapNode): void {
+        const url = node.attrs?.url || '';
+        const title = node.attrs?.title || '';
+        const desc = node.attrs?.description || '';
+        const image = node.attrs?.image || '';
+
+        // 使用 HTML Passthrough 以保持完整数据结构
+        this.output.push('++++');
+        // 构建包含数据的 div
+        let html = `<div data-web-bookmark="" data-url="${url}"`;
+        if (title) html += ` data-title="${title}"`;
+        if (desc) html += ` data-description="${desc}"`;
+        if (image) html += ` data-image="${image}"`;
+        html += '></div>';
+
+        this.output.push(html);
+        this.output.push('++++');
+        this.output.push('');
+    }
+
+    /**
      * 访问硬换行
      */
     private visitHardBreak(node: TiptapNode): string {
@@ -477,6 +723,8 @@ export class TiptapJSONVisitor {
                 const src = node.attrs?.src || '';
                 const alt = node.attrs?.alt || '';
                 return `image:${src}[${alt}]`;
+            } else if (node.type === 'mathInline') {
+                return `latexmath:[${node.attrs?.latex || ''}]`;
             }
             return '';
         }).join('');

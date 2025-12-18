@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import Image from '@tiptap/extension-image';
 import Table from '@tiptap/extension-table';
@@ -11,8 +11,7 @@ import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
+// TaskList 和 TaskItem 从 BlockWrapperExtension 导入 (已配置 nested: true)
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { TableCaption } from '../extensions/TableCaption';
@@ -20,6 +19,10 @@ import { AdmonitionNode } from '../extensions/admonition-node';
 import { IncludeNode } from '../extensions/include-node';
 import { SlashCommands } from '../extensions/slash-commands';
 import { UniqueIdExtension } from '../extensions/UniqueId';
+import { DetailsWithCommands, DetailsSummary, DetailsContent } from '../extensions/ToggleList';
+import { MathInline, MathBlock, MathCommands } from '../extensions/Mathematics';
+import { Video, Audio, FileBlock } from '../extensions/MediaExtensions';
+import { WebBookmark } from '../extensions/WebBookmark';
 import {
   StarterKitWithoutBlockNodes,
   ParagraphWithHandle,
@@ -29,7 +32,10 @@ import {
   BlockquoteWithHandle,
   CodeBlockWithHandle,
   HorizontalRuleWithHandle,
+  TaskListWithHandle,
+  TaskItemConfigured,
 } from '../extensions/BlockWrapperExtension';
+import { BlockMenu } from './BlockMenu';
 import { useEditorStore } from '../store/useEditorStore';
 import { jsonToAdoc, adocToHtml } from '../lib/asciidoc';
 import { renderMermaidDiagrams } from '../lib/asciidoctor-renderer';
@@ -100,10 +106,46 @@ export const TiptapEditor: React.FC = () => {
     highlightLine,
     darkMode,
     editorWidth,
+    // Page Settings
+    editorFont,
+    smallText,
+    isFullWidth,
+    isLocked,
   } = useEditorStore();
 
   const previewRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  // BlockMenu 状态
+  const [blockMenuState, setBlockMenuState] = useState<{
+    isOpen: boolean;
+    blockId: string;
+    position: { x: number; y: number };
+    blockPos: number;
+  }>({
+    isOpen: false,
+    blockId: '',
+    position: { x: 0, y: 0 },
+    blockPos: 0,
+  });
+
+  // 监听 block-menu-open 事件（从 BlockNodeView 触发）
+  useEffect(() => {
+    const handleBlockMenuOpen = (e: CustomEvent) => {
+      const { blockId, x, y, pos } = e.detail;
+      setBlockMenuState({
+        isOpen: true,
+        blockId,
+        position: { x, y },
+        blockPos: pos,
+      });
+    };
+
+    document.addEventListener('block-menu-open', handleBlockMenuOpen as EventListener);
+    return () => {
+      document.removeEventListener('block-menu-open', handleBlockMenuOpen as EventListener);
+    };
+  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -131,11 +173,37 @@ export const TiptapEditor: React.FC = () => {
       AdmonitionNode,
       IncludeNode,
       SlashCommands,
-      TaskList,
-      TaskItem.configure({
-        nested: true,
-      }),
-      Highlight.configure({
+      TaskListWithHandle,
+      TaskItemConfigured,
+      DetailsWithCommands,
+      DetailsSummary,
+      DetailsContent,
+      Video,
+      Audio,
+      FileBlock,
+      MathInline,
+      MathBlock,
+      MathCommands,
+      WebBookmark,
+      Highlight.extend({
+        parseHTML() {
+          return [
+            {
+              tag: 'mark',
+            },
+            {
+              tag: 'span',
+              getAttrs: element => {
+                // 检查是否有背景色样式
+                if ((element as HTMLElement).style.backgroundColor) {
+                  return { color: (element as HTMLElement).style.backgroundColor };
+                }
+                return false;
+              },
+            },
+          ];
+        },
+      }).configure({
         multicolor: true,
       }),
       Link.configure({
@@ -146,7 +214,19 @@ export const TiptapEditor: React.FC = () => {
         },
       }),
       Placeholder.configure({
-        placeholder: 'Start writing your AsciiDoc document...',
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') {
+            const level = node.attrs.level;
+            return level === 1 ? 'Heading 1' : level === 2 ? 'Heading 2' : `Heading ${level}`;
+          }
+          if (node.type.name === 'paragraph') {
+            return "Type '/' for commands...";
+          }
+          if (node.type.name === 'codeBlock') {
+            return 'Enter code...';
+          }
+          return '';
+        },
       }),
     ],
     content: '',
@@ -430,6 +510,13 @@ export const TiptapEditor: React.FC = () => {
     }
   }, [syncToLine, setSyncToLine, sourceContent]);
 
+  // Handle Read-only mode
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!isLocked);
+    }
+  }, [editor, isLocked]);
+
   if (!editor) {
     return null;
   }
@@ -472,8 +559,15 @@ export const TiptapEditor: React.FC = () => {
           ) : (
             // Tiptap 富文本编辑器
             <div
-              className="mx-auto px-8 py-12 transition-all duration-300"
-              style={{ maxWidth: `${editorWidth}%` }}
+              className={`
+                mx-auto px-8 py-12 transition-all duration-300
+                ${editorFont === 'serif' ? 'font-serif' : editorFont === 'mono' ? 'font-mono' : 'font-sans'}
+                ${smallText ? 'text-sm' : 'text-base'}
+              `}
+              style={{
+                maxWidth: isFullWidth ? '100%' : '900px', // Standard Notion width is ~900px
+                width: '100%'
+              }}
               onClick={() => editor.chain().focus().run()}
             >
               <EditorContent editor={editor} />
@@ -492,6 +586,16 @@ export const TiptapEditor: React.FC = () => {
 
       {/* Context Menu */}
       <ContextMenu editor={editor} />
+
+      {/* Block Menu (六点手柄菜单) */}
+      <BlockMenu
+        isOpen={blockMenuState.isOpen}
+        blockId={blockMenuState.blockId}
+        position={blockMenuState.position}
+        blockPos={blockMenuState.blockPos}
+        onClose={() => setBlockMenuState(prev => ({ ...prev, isOpen: false }))}
+        editor={editor}
+      />
     </div>
   );
 };

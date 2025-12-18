@@ -39,6 +39,12 @@ interface EditorState {
   desktopSidebarVisible: boolean;
   editorWidth: 50 | 75 | 100;
 
+  // 页面设置
+  editorFont: 'sans' | 'serif' | 'mono';
+  smallText: boolean;
+  isFullWidth: boolean;
+  isLocked: boolean;
+
   // 搜索对话框状态
   searchDialogOpen: boolean;
 
@@ -84,6 +90,12 @@ interface EditorState {
   toggleDesktopSidebar: () => void;
   setEditorWidth: (width: 50 | 75 | 100) => void;
 
+  // 页面设置操作
+  setEditorFont: (font: 'sans' | 'serif' | 'mono') => void;
+  toggleSmallText: () => void;
+  toggleFullWidth: () => void;
+  toggleLock: () => void;
+
   // 搜索对话框操作
   openSearchDialog: () => void;
   closeSearchDialog: () => void;
@@ -128,6 +140,12 @@ export const useEditorStore = create<EditorState>()(
       toolbarVisible: false,
       desktopSidebarVisible: true,
       editorWidth: 75,
+      // 页面设置默认值
+      editorFont: 'sans',
+      smallText: false,
+      isFullWidth: false,
+      isLocked: false,
+
       searchDialogOpen: false,
       imageManagerOpen: false,
       darkMode: false,
@@ -276,6 +294,12 @@ export const useEditorStore = create<EditorState>()(
       toggleDesktopSidebar: () => set((state) => ({ desktopSidebarVisible: !state.desktopSidebarVisible })),
       setEditorWidth: (width) => set({ editorWidth: width }),
 
+      // 页面设置操作
+      setEditorFont: (font) => set({ editorFont: font }),
+      toggleSmallText: () => set((state) => ({ smallText: !state.smallText })),
+      toggleFullWidth: () => set((state) => ({ isFullWidth: !state.isFullWidth })),
+      toggleLock: () => set((state) => ({ isLocked: !state.isLocked })),
+
       openSearchDialog: () => set({ searchDialogOpen: true }),
       closeSearchDialog: () => set({ searchDialogOpen: false }),
 
@@ -359,6 +383,11 @@ export const useEditorStore = create<EditorState>()(
         viewMode: state.viewMode,
         // sourceContent 不再持久化到 localStorage
         darkMode: state.darkMode,
+        editorWidth: state.editorWidth,
+        editorFont: state.editorFont,
+        smallText: state.smallText,
+        isFullWidth: state.isFullWidth,
+        isLocked: state.isLocked,
       }),
     }
   )

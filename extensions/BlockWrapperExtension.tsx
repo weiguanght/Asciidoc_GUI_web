@@ -5,7 +5,6 @@
  * 为所有顶级块节点添加 Notion 风格的拖拽手柄和添加按钮
  */
 
-import { Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Paragraph from '@tiptap/extension-paragraph';
@@ -15,6 +14,8 @@ import OrderedList from '@tiptap/extension-ordered-list';
 import Blockquote from '@tiptap/extension-blockquote';
 import CodeBlock from '@tiptap/extension-code-block';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { BlockNodeView } from './BlockNodeView';
 
 /**
@@ -78,6 +79,24 @@ export const HorizontalRuleWithHandle = HorizontalRule.extend({
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
+});
+
+/**
+ * 创建带拖拽手柄的 TaskList 节点
+ * 注意：TaskList 本身作为容器，TaskItem 是实际的可勾选项
+ */
+export const TaskListWithHandle = TaskList.extend({
+    addNodeView() {
+        return ReactNodeViewRenderer(BlockNodeView);
+    },
+});
+
+/**
+ * 配置 TaskItem 支持嵌套
+ * 限制最大嵌套深度为 4 层（避免 AsciiDoc 转换问题）
+ */
+export const TaskItemConfigured = TaskItem.configure({
+    nested: true,
 });
 
 /**

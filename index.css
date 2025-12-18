@@ -132,6 +132,7 @@
 }
 
 @media print {
+
     /* 隐藏 UI 元素 */
     .sidebar-container,
     [class*="sidebar"],
@@ -150,7 +151,7 @@
     header {
         display: none !important;
     }
-    
+
     /* 主内容区重置 */
     main,
     .main-content,
@@ -163,7 +164,7 @@
         border: none !important;
         border-radius: 0 !important;
     }
-    
+
     /* 预览区域优化 */
     .asciidoc-preview,
     .prose,
@@ -177,75 +178,90 @@
         font-size: 12pt !important;
         line-height: 1.5 !important;
     }
-    
+
     /* 标题样式 */
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         color: black !important;
         page-break-after: avoid;
     }
-    
-    h1 { font-size: 24pt !important; }
-    h2 { font-size: 18pt !important; }
-    h3 { font-size: 14pt !important; }
-    
+
+    h1 {
+        font-size: 24pt !important;
+    }
+
+    h2 {
+        font-size: 18pt !important;
+    }
+
+    h3 {
+        font-size: 14pt !important;
+    }
+
     /* 段落 */
     p {
         orphans: 3;
         widows: 3;
     }
-    
+
     /* 代码块 */
-    pre, code {
+    pre,
+    code {
         background: #f5f5f5 !important;
         color: black !important;
         border: 1px solid #ddd !important;
         font-size: 10pt !important;
         page-break-inside: avoid;
     }
-    
+
     /* 表格 */
     table {
         border-collapse: collapse !important;
         page-break-inside: avoid;
     }
-    
-    th, td {
+
+    th,
+    td {
         border: 1px solid #333 !important;
         padding: 8px !important;
         color: black !important;
         background: white !important;
     }
-    
+
     th {
         background: #eee !important;
         font-weight: bold !important;
     }
-    
+
     /* 图片 */
     img {
         max-width: 100% !important;
         page-break-inside: avoid;
     }
-    
+
     /* 链接 */
     a {
         color: black !important;
         text-decoration: underline !important;
     }
-    
+
     a[href]::after {
         content: " (" attr(href) ")";
         font-size: 9pt;
         color: #666;
     }
-    
+
     /* 告示块 */
     .admonitionblock {
         border: 1px solid #333 !important;
         background: #f9f9f9 !important;
         page-break-inside: avoid;
     }
-    
+
     /* 引用块 */
     blockquote {
         border-left: 4px solid #333 !important;
@@ -253,17 +269,23 @@
         padding-left: 1em !important;
         color: #333 !important;
     }
-    
+
     /* 分页提示 */
-    .sect1, .sect2 {
+    .sect1,
+    .sect2 {
         page-break-before: auto;
     }
-    
+
     /* 避免孤立的标题 */
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
         page-break-after: avoid;
     }
-    
+
     /* 强制显示预览 */
     .asciidoc-preview {
         display: block !important;
@@ -476,10 +498,32 @@
         opacity: 0;
         transform: translateY(-4px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* 全局拖拽状态 - 禁用文本选择 */
+body.is-dragging-block {
+    cursor: grabbing !important;
+    user-select: none !important;
+}
+
+body.is-dragging-block * {
+    cursor: grabbing !important;
+}
+
+/* 拖拽中的块样式 */
+.block-wrapper-dragging {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* 拖拽悬停目标 */
+.block-wrapper-drag-over {
+    background-color: rgba(59, 130, 246, 0.04);
 }
 
 /* ============ TaskList 样式 (Notion 风格) ============ */
@@ -501,7 +545,7 @@ ul[data-type="taskList"] li {
 }
 
 /* 任务项标签（包含复选框） */
-ul[data-type="taskList"] li > label {
+ul[data-type="taskList"] li>label {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -513,7 +557,7 @@ ul[data-type="taskList"] li > label {
 }
 
 /* Notion 风格方形复选框 */
-ul[data-type="taskList"] li > label input[type="checkbox"] {
+ul[data-type="taskList"] li>label input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
     width: 16px;
@@ -526,19 +570,19 @@ ul[data-type="taskList"] li > label input[type="checkbox"] {
     position: relative;
 }
 
-ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+ul[data-type="taskList"] li>label input[type="checkbox"]:hover {
     border-color: #9ca3af;
     background: rgba(0, 0, 0, 0.02);
 }
 
 /* 选中状态 */
-ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+ul[data-type="taskList"] li>label input[type="checkbox"]:checked {
     background: #2563eb;
     border-color: #2563eb;
 }
 
 /* 选中状态的勾选标记 */
-ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+ul[data-type="taskList"] li>label input[type="checkbox"]:checked::after {
     content: '';
     position: absolute;
     top: 1px;
@@ -551,13 +595,13 @@ ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
 }
 
 /* 已完成任务的文本样式 */
-ul[data-type="taskList"] li[data-checked="true"] > div {
+ul[data-type="taskList"] li[data-checked="true"]>div {
     color: #9ca3af;
     text-decoration: line-through;
 }
 
 /* 任务项内容区域 */
-ul[data-type="taskList"] li > div {
+ul[data-type="taskList"] li>div {
     flex: 1;
     min-width: 0;
 }
@@ -569,20 +613,123 @@ ul[data-type="taskList"] ul[data-type="taskList"] {
 }
 
 /* 暗色模式 */
-.dark ul[data-type="taskList"] li > label input[type="checkbox"] {
+.dark ul[data-type="taskList"] li>label input[type="checkbox"] {
     border-color: #4b5563;
 }
 
-.dark ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+.dark ul[data-type="taskList"] li>label input[type="checkbox"]:hover {
     border-color: #6b7280;
     background: rgba(255, 255, 255, 0.02);
 }
 
-.dark ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+.dark ul[data-type="taskList"] li>label input[type="checkbox"]:checked {
     background: #3b82f6;
     border-color: #3b82f6;
 }
 
-.dark ul[data-type="taskList"] li[data-checked="true"] > div {
+.dark ul[data-type="taskList"] li[data-checked="true"]>div {
     color: #6b7280;
+}
+
+/* ============ ToggleList 样式 (Notion 风格) ============ */
+
+.toggle-list-wrapper {
+    position: relative;
+}
+
+.toggle-list {
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+}
+
+.toggle-list:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.toggle-list-header {
+    padding: 4px 0;
+    user-select: none;
+}
+
+.toggle-list-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    transition: transform 0.15s ease;
+}
+
+.toggle-list-open .toggle-list-button {
+    transform: rotate(90deg);
+}
+
+.toggle-list-summary {
+    font-weight: 500;
+}
+
+.toggle-list-summary p {
+    margin: 0;
+}
+
+.toggle-list-content {
+    padding-bottom: 4px;
+}
+
+.toggle-list-content p {
+    margin: 4px 0;
+}
+
+/* 暗色模式 */
+.dark .toggle-list:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dark .toggle-list-button {
+    color: #64748b;
+}
+
+.dark .toggle-list-button:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ============ Mathematics 样式 (KaTeX) ============ */
+
+/* 引入 KaTeX CSS (需要在 index.html 或全局引入) */
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.27/dist/katex.min.css');
+
+.math-inline-wrapper {
+    display: inline;
+}
+
+.math-inline-render {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.math-inline-input {
+    max-width: 200px;
+}
+
+.math-block-wrapper {
+    position: relative;
+}
+
+.math-block-render {
+    overflow-x: auto;
+}
+
+.math-block-render .katex-display {
+    margin: 0;
+}
+
+/* 暗色模式下 KaTeX 样式 */
+.dark .math-block-render,
+.dark .math-inline-render {
+    color: #e2e8f0;
+}
+
+.dark .katex {
+    color: inherit;
 }

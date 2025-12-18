@@ -6,6 +6,8 @@
  * - 复制块
  * - 移动块（上/下）
  * - 转换块类型
+ * - 颜色设置（背景色）
+ * - 复制块链接
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -24,6 +26,9 @@ import {
     Code,
     Quote,
     X,
+    Palette,
+    Link2,
+    CheckSquare,
 } from 'lucide-react';
 
 // ============================================
@@ -52,6 +57,20 @@ interface MenuItem {
     divider?: boolean;
 }
 
+// Notion 风格背景色
+const blockColors = [
+    { name: 'Default', value: null },
+    { name: 'Gray', value: '#F1F1EF' },
+    { name: 'Brown', value: '#F4EEEE' },
+    { name: 'Orange', value: '#FBECDD' },
+    { name: 'Yellow', value: '#FBF3DB' },
+    { name: 'Green', value: '#EDF3EC' },
+    { name: 'Blue', value: '#E7F3F8' },
+    { name: 'Purple', value: '#F6F3F9' },
+    { name: 'Pink', value: '#FAF1F5' },
+    { name: 'Red', value: '#FDEBEC' },
+];
+
 // ============================================
 // BlockMenu 组件
 // ============================================
@@ -66,6 +85,7 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
 }) => {
     const menuRef = useRef<HTMLDivElement>(null);
     const [showTransformMenu, setShowTransformMenu] = useState(false);
+    const [showColorMenu, setShowColorMenu] = useState(false);
 
     // 点击外部关闭
     useEffect(() => {
@@ -101,33 +121,51 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         };
     }, [isOpen, onClose]);
 
+    // 重置子菜单状态
+    useEffect(() => {
+        if (!isOpen) {
+            setShowTransformMenu(false);
+            setShowColorMenu(false);
+        }
+    }, [isOpen]);
+
     if (!isOpen || !editor) return null;
+
+    // 获取当前节点
+    const getNode = () => editor.state.doc.nodeAt(blockPos);
 
     // 删除块
     const deleteBlock = () => {
-        editor.chain().focus().deleteRange({ from: blockPos, to: blockPos + 1 }).run();
+        const node = getNode();
+        if (node) {
+            editor.chain().focus().deleteRange({ from: blockPos, to: blockPos + node.nodeSize }).run();
+        }
         onClose();
     };
 
-    // 复制块
+    // 复制块（深拷贝）
     const duplicateBlock = () => {
-        const node = editor.state.doc.nodeAt(blockPos);
+        const node = getNode();
         if (node) {
             const insertPos = blockPos + node.nodeSize;
-            editor.chain().focus().insertContentAt(insertPos, node.toJSON()).run();
+            // 使用 node.toJSON() 进行深拷贝
+            const nodeJson = node.toJSON();
+            // 移除 id 属性以便自动生成新 ID
+            if (nodeJson.attrs) {
+                delete nodeJson.attrs.id;
+            }
+            editor.chain().focus().insertContentAt(insertPos, nodeJson).run();
         }
         onClose();
     };
 
     // 向上移动
     const moveUp = () => {
-        // 找到前一个块并交换位置
         if (blockPos > 0) {
             const $pos = editor.state.doc.resolve(blockPos);
             const prevPos = $pos.before($pos.depth);
             if (prevPos >= 0) {
-                // 简单实现：删除并在前面插入
-                const node = editor.state.doc.nodeAt(blockPos);
+                const node = getNode();
                 if (node) {
                     editor.chain().focus()
                         .deleteRange({ from: blockPos, to: blockPos + node.nodeSize })
@@ -141,7 +179,7 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
 
     // 向下移动
     const moveDown = () => {
-        const node = editor.state.doc.nodeAt(blockPos);
+        const node = getNode();
         if (node) {
             const nextPos = blockPos + node.nodeSize;
             const nextNode = editor.state.doc.nodeAt(nextPos);
@@ -156,10 +194,49 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         onClose();
     };
 
+    // 复制块链接到剪贴板
+    const copyLinkToBlock = async () => {
+        const url = `${window.location.href.split('#')[0]}#block-${blockId}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            // 可以添加 toast 提示
+            console.log('[BlockMenu] Copied link:', url);
+        } catch (err) {
+            console.error('[BlockMenu] Failed to copy link:', err);
+        }
+        onClose();
+    };
+
     // 转换为其他类型
     const transformTo = (type: string, attrs?: Record<string, any>) => {
         editor.chain().focus().setNode(type, attrs).run();
         setShowTransformMenu(false);
+        onClose();
+    };
+
+    // 切换列表类型
+    const toggleList = (listType: 'bulletList' | 'orderedList' | 'taskList') => {
+        switch (listType) {
+            case 'bulletList':
+                editor.chain().focus().toggleBulletList().run();
+                break;
+            case 'orderedList':
+                editor.chain().focus().toggleOrderedList().run();
+                break;
+            case 'taskList':
+                editor.chain().focus().toggleTaskList().run();
+                break;
+        }
+        setShowTransformMenu(false);
+        onClose();
+    };
+
+    // 设置块背景色（通过包裹 div 或自定义属性）
+    const setBlockColor = (color: string | null) => {
+        // TODO: 需要实现块级背景色
+        // 目前 Tiptap 没有原生支持块级背景色，可以通过扩展节点属性实现
+        console.log('[BlockMenu] Set block color:', color);
+        setShowColorMenu(false);
         onClose();
     };
 
@@ -175,10 +252,15 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
             action: duplicateBlock,
         },
         {
+            label: '复制链接',
+            icon: <Link2 size={16} />,
+            action: copyLinkToBlock,
+            divider: true,
+        },
+        {
             label: '向上移动',
             icon: <ArrowUp size={16} />,
             action: moveUp,
-            divider: true,
         },
         {
             label: '向下移动',
@@ -211,12 +293,17 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         {
             label: '无序列表',
             icon: <List size={16} />,
-            action: () => editor.chain().focus().toggleBulletList().run(),
+            action: () => toggleList('bulletList'),
         },
         {
             label: '有序列表',
             icon: <ListOrdered size={16} />,
-            action: () => editor.chain().focus().toggleOrderedList().run(),
+            action: () => toggleList('orderedList'),
+        },
+        {
+            label: '待办清单',
+            icon: <CheckSquare size={16} />,
+            action: () => toggleList('taskList'),
         },
         {
             label: '代码块',
@@ -230,16 +317,10 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         },
     ];
 
-    return (
-        <div
-            ref={menuRef}
-            className="block-menu fixed bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 z-50 min-w-[180px]"
-            style={{
-                left: position.x,
-                top: position.y,
-            }}
-        >
-            {showTransformMenu ? (
+    // 渲染子菜单
+    const renderSubMenu = () => {
+        if (showTransformMenu) {
+            return (
                 <>
                     <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-slate-700">
                         <span>转换为</span>
@@ -261,6 +342,52 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
                         </button>
                     ))}
                 </>
+            );
+        }
+
+        if (showColorMenu) {
+            return (
+                <>
+                    <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-slate-700">
+                        <span>背景色</span>
+                        <button
+                            onClick={() => setShowColorMenu(false)}
+                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                    <div className="p-2 grid grid-cols-5 gap-1">
+                        {blockColors.map((color) => (
+                            <button
+                                key={color.name}
+                                onClick={() => setBlockColor(color.value)}
+                                className="w-7 h-7 rounded border border-gray-200 dark:border-slate-600 hover:scale-110 transition-transform flex items-center justify-center"
+                                style={{ backgroundColor: color.value || 'transparent' }}
+                                title={color.name}
+                            >
+                                {color.value === null && <X size={12} className="text-gray-400" />}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            );
+        }
+
+        return null;
+    };
+
+    return (
+        <div
+            ref={menuRef}
+            className="block-menu fixed bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 z-50 min-w-[180px]"
+            style={{
+                left: position.x,
+                top: position.y,
+            }}
+        >
+            {showTransformMenu || showColorMenu ? (
+                renderSubMenu()
             ) : (
                 <>
                     {mainMenuItems.map((item, index) => (
@@ -278,6 +405,13 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
                         </React.Fragment>
                     ))}
                     <div className="border-t border-gray-100 dark:border-slate-700 my-1" />
+                    <button
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                        onClick={() => setShowColorMenu(true)}
+                    >
+                        <span className="text-gray-400"><Palette size={16} /></span>
+                        <span>颜色</span>
+                    </button>
                     <button
                         className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                         onClick={() => setShowTransformMenu(true)}

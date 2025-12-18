@@ -70,16 +70,32 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
         onAddBlock?.(blockId, 'after');
     }, [blockId, onAddBlock]);
 
-    // 处理点击拖拽手柄（打开菜单）
+    // 拖拽状态跟踪
+    const [isDragStarted, setIsDragStarted] = useState(false);
+
+    // 处理点击拖拽手柄（打开菜单）- 只有在没有拖拽时才触发
     const handleGripClick = useCallback((event: React.MouseEvent) => {
+        if (isDragStarted) {
+            setIsDragStarted(false);
+            return;
+        }
         event.stopPropagation();
         onOpenMenu?.(blockId, event);
-    }, [blockId, onOpenMenu]);
+    }, [blockId, onOpenMenu, isDragStarted]);
 
-    // 拖拽手柄的 mousedown 用于开始拖拽，click 用于打开菜单
-    const handleGripMouseDown = useCallback((event: React.MouseEvent) => {
-        // 不阻止默认行为，允许原生拖拽开始
-    }, []);
+    // 自定义拖拽开始处理 - 标记为正在拖拽
+    const handleDragStartWrapper = useCallback((e: React.DragEvent) => {
+        console.log('[BlockWrapper] handleDragStartWrapper called for block:', blockId);
+        setIsDragStarted(true);
+        dragHandleProps.onDragStart(e);
+    }, [dragHandleProps, blockId]);
+
+    // 自定义拖拽结束处理 - 重置状态
+    const handleDragEndWrapper = useCallback((e: React.DragEvent) => {
+        console.log('[BlockWrapper] handleDragEndWrapper called for block:', blockId);
+        setTimeout(() => setIsDragStarted(false), 100);
+        dragHandleProps.onDragEnd(e);
+    }, [dragHandleProps, blockId]);
 
     return (
         <div
@@ -122,10 +138,13 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
                 <div
                     className="block-drag-handle p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 cursor-grab active:cursor-grabbing transition-colors"
                     onClick={handleGripClick}
-                    onMouseDown={handleGripMouseDown}
+                    onMouseDown={(e) => e.preventDefault()}
+                    data-drag-handle
+                    draggable={true}
+                    onDragStart={handleDragStartWrapper}
+                    onDragEnd={handleDragEndWrapper}
                     title="拖拽移动块，点击打开菜单"
                     tabIndex={-1}
-                    {...dragHandleProps}
                 >
                     <GripVertical size={14} className="text-gray-400 dark:text-gray-500" />
                 </div>

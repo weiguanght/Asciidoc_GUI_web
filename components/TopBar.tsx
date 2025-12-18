@@ -24,6 +24,7 @@ import { exportToPdf } from '../lib/pdf-export';
 import { exportAsZip } from '../lib/zip-export';
 import { exportEditorToMarkdown } from '../lib/markdown-converter';
 import { jsonToAdoc } from '../lib/asciidoc';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface TopBarProps {
     editor: any;
@@ -54,6 +55,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
     const [moreMenuOpen, setMoreMenuOpen] = useState(false);
     const exportMenuRef = useRef<HTMLDivElement>(null);
     const moreMenuRef = useRef<HTMLDivElement>(null);
+    const { t } = useTranslation();
 
     // 获取当前文件
     const currentFile = files.find(f => f.id === activeFileId);
@@ -162,7 +164,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                         ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300'
                         : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                         }`}
-                    title={desktopSidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
+                    title={desktopSidebarVisible ? t('topBar.hideSidebar') : t('topBar.showSidebar')}
                 >
                     {desktopSidebarVisible ? (
                         <PanelLeftClose size={18} />
@@ -174,7 +176,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                 {/* 面包屑导航 */}
                 {breadcrumbs.length === 0 ? (
                     <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                        No file selected
+                        {t('topBar.noFileSelected')}
                     </span>
                 ) : (
                     breadcrumbs.map((crumb, index) => (
@@ -212,12 +214,12 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                     {isSaving ? (
                         <>
                             <Loader2 size={12} className="animate-spin" />
-                            <span>Saving...</span>
+                            <span>{t('topBar.saving')}</span>
                         </>
                     ) : lastSavedAt ? (
                         <>
                             <Check size={12} className="text-green-500" />
-                            <span>Saved {formatSaveTime()}</span>
+                            <span>{t('topBar.saved')} {formatSaveTime()}</span>
                         </>
                     ) : null}
                 </div>
@@ -235,7 +237,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                             }`}
                     >
                         <Share2 size={14} />
-                        <span>Export</span>
+                        <span>{t('topBar.export')}</span>
                     </button>
 
                     {/* 导出下拉菜单 */}
@@ -254,7 +256,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                     }`}
                             >
                                 <Download size={14} />
-                                Export as PDF
+                                {t('topBar.exportPdf')}
                             </button>
                             <button
                                 onClick={handleExportAdoc}
@@ -264,7 +266,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                     }`}
                             >
                                 <FileDown size={14} />
-                                Export as AsciiDoc
+                                {t('topBar.exportAdoc')}
                             </button>
                             <button
                                 onClick={handleExportMarkdown}
@@ -274,7 +276,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                     }`}
                             >
                                 <FileDown size={14} />
-                                Export as Markdown
+                                {t('topBar.exportMarkdown')}
                             </button>
                             <div className={`my-1 h-px ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`} />
                             <button
@@ -285,7 +287,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                     }`}
                             >
                                 <FileArchive size={14} />
-                                Export as ZIP
+                                {t('topBar.exportZip')}
                             </button>
                         </div>
                     )}
@@ -313,7 +315,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                         >
                             {/* Style Settings */}
                             <div className={`px-3 py-2 text-xs font-medium ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                Style
+                                {t('topBar.style')}
                             </div>
                             <div className="flex px-3 gap-2 mb-2">
                                 {['sans', 'serif', 'mono'].map(font => (
@@ -335,7 +337,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                 onClick={toggleSmallText}
                                 className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700'}`}
                             >
-                                <span>Small text</span>
+                                <span>{t('topBar.smallText')}</span>
                                 <div className={`w-8 h-4 rounded-full relative transition-colors ${smallText ? 'bg-blue-600' : darkMode ? 'bg-slate-600' : 'bg-gray-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform`} style={{ left: smallText ? 'calc(100% - 14px)' : '2px' }} />
                                 </div>
@@ -345,7 +347,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                 onClick={toggleFullWidth}
                                 className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700'}`}
                             >
-                                <span>Full width</span>
+                                <span>{t('topBar.fullWidth')}</span>
                                 <div className={`w-8 h-4 rounded-full relative transition-colors ${isFullWidth ? 'bg-blue-600' : darkMode ? 'bg-slate-600' : 'bg-gray-300'}`}>
                                     <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform`} style={{ left: isFullWidth ? 'calc(100% - 14px)' : '2px' }} />
                                 </div>
@@ -354,7 +356,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                             <div className={`my-1 h-px ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`} />
 
                             <div className={`px-3 py-2 text-xs font-medium ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                                Page Attributes
+                                {t('topBar.pageAttributes')}
                             </div>
 
                             <button
@@ -368,9 +370,9 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                             >
                                 <div className="flex items-center gap-2">
                                     {isLocked ? <Lock size={14} className="text-red-500" /> : <Unlock size={14} />}
-                                    <span>{isLocked ? 'Unlock Page' : 'Lock Page'}</span>
+                                    <span>{isLocked ? t('topBar.unlockPage') : t('topBar.lockPage')}</span>
                                 </div>
-                                {isLocked && <span className="text-xs text-red-500 font-medium">Locked</span>}
+                                {isLocked && <span className="text-xs text-red-500 font-medium">{t('topBar.locked')}</span>}
                             </button>
 
                             <button
@@ -383,7 +385,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                     : 'text-gray-700 hover:bg-gray-100'
                                     }`}
                             >
-                                <span>Table of Contents</span>
+                                <span>{t('topBar.tableOfContents')}</span>
                                 <span className={`text-xs ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                                     :toc:
                                 </span>
@@ -398,7 +400,7 @@ export const TopBar: React.FC<TopBarProps> = ({ editor }) => {
                                     : 'text-gray-700 hover:bg-gray-100'
                                     }`}
                             >
-                                <span>Numbered Sections</span>
+                                <span>{t('topBar.numberedSections')}</span>
                                 <span className={`text-xs ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                                     :sectnums:
                                 </span>

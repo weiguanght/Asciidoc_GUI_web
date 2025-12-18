@@ -440,6 +440,8 @@
     height: 24px;
     border-radius: 4px;
     transition: background-color 0.15s ease;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .block-add-button:hover,

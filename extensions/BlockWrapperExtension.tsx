@@ -22,6 +22,7 @@ import { BlockNodeView } from './BlockNodeView';
  * 创建带拖拽手柄的 Paragraph 节点
  */
 export const ParagraphWithHandle = Paragraph.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -31,6 +32,7 @@ export const ParagraphWithHandle = Paragraph.extend({
  * 创建带拖拽手柄的 Heading 节点
  */
 export const HeadingWithHandle = Heading.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -40,6 +42,7 @@ export const HeadingWithHandle = Heading.extend({
  * 创建带拖拽手柄的 BulletList 节点
  */
 export const BulletListWithHandle = BulletList.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -49,6 +52,7 @@ export const BulletListWithHandle = BulletList.extend({
  * 创建带拖拽手柄的 OrderedList 节点
  */
 export const OrderedListWithHandle = OrderedList.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -58,6 +62,7 @@ export const OrderedListWithHandle = OrderedList.extend({
  * 创建带拖拽手柄的 Blockquote 节点
  */
 export const BlockquoteWithHandle = Blockquote.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -67,6 +72,7 @@ export const BlockquoteWithHandle = Blockquote.extend({
  * 创建带拖拽手柄的 CodeBlock 节点
  */
 export const CodeBlockWithHandle = CodeBlock.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -76,6 +82,7 @@ export const CodeBlockWithHandle = CodeBlock.extend({
  * 创建带拖拽手柄的 HorizontalRule 节点
  */
 export const HorizontalRuleWithHandle = HorizontalRule.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },
@@ -86,6 +93,7 @@ export const HorizontalRuleWithHandle = HorizontalRule.extend({
  * 注意：TaskList 本身作为容器，TaskItem 是实际的可勾选项
  */
 export const TaskListWithHandle = TaskList.extend({
+    draggable: true,
     addNodeView() {
         return ReactNodeViewRenderer(BlockNodeView);
     },

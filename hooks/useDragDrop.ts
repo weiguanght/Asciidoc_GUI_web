@@ -71,11 +71,18 @@ export function useDragDrop({
 
     // 拖拽开始
     const handleDragStart = useCallback((e: React.DragEvent) => {
-        if (!editor) return;
+        console.log('[useDragDrop] handleDragStart called for block:', blockId);
+        if (!editor) {
+            console.log('[useDragDrop] No editor in handleDragStart');
+            return;
+        }
 
         const pos = getPos();
         const node = editor.state.doc.nodeAt(pos);
-        if (!node) return;
+        if (!node) {
+            console.log('[useDragDrop] No node found at pos:', pos);
+            return;
+        }
 
         // 设置拖拽数据
         e.dataTransfer.setData(DRAG_DATA_TYPE, JSON.stringify({
@@ -110,17 +117,11 @@ export function useDragDrop({
         document.body.classList.remove('is-dragging-block');
     }, []);
 
-    // 拖拽经过 (使用节流优化)
-    const handleDragOver = useCallback(
-        throttle((e: React.DragEvent) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-
-            // 计算放置位置 (上半部分 = before, 下半部分 = after)
-            const target = e.currentTarget as HTMLElement;
-            const rect = target.getBoundingClientRect();
+    // 节流的状态更新函数
+    const throttledUpdateDropPosition = useCallback(
+        throttle((clientY: number, rect: DOMRect) => {
             const midY = rect.top + rect.height / 2;
-            const dropPosition = e.clientY < midY ? 'before' : 'after';
+            const dropPosition = clientY < midY ? 'before' : 'after';
 
             setState(prev => ({
                 ...prev,
@@ -130,6 +131,18 @@ export function useDragDrop({
         }, 50),
         []
     );
+
+    // 拖拽经过 - 必须立即 preventDefault 才能允许 drop
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        console.log('[useDragDrop] handleDragOver called on block:', blockId);
+
+        // 计算放置位置 (使用节流优化状态更新)
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        throttledUpdateDropPosition(e.clientY, rect);
+    }, [throttledUpdateDropPosition, blockId]);
 
     // 拖拽离开
     const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -151,13 +164,24 @@ export function useDragDrop({
         e.preventDefault();
         e.stopPropagation();
 
-        if (!editor) return;
+        console.log('[useDragDrop] handleDrop called');
+
+        if (!editor) {
+            console.log('[useDragDrop] No editor, aborting');
+            return;
+        }
 
         const dataStr = e.dataTransfer.getData(DRAG_DATA_TYPE);
-        if (!dataStr) return;
+        console.log('[useDragDrop] Data received:', dataStr ? 'has data' : 'NO DATA', 'type:', DRAG_DATA_TYPE);
+
+        if (!dataStr) {
+            console.log('[useDragDrop] No data string, aborting');
+            return;
+        }
 
         try {
             const dragData = JSON.parse(dataStr);
+            console.log('[useDragDrop] Parsed drag data:', dragData);
             const { pos: sourcePos, nodeSize: sourceNodeSize, nodeJSON } = dragData;
             const targetPos = getPos();
 

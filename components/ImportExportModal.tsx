@@ -9,6 +9,7 @@ import { useEditorStore } from '../store/useEditorStore';
 import { Upload, FileText, FileDown, AlertCircle } from 'lucide-react';
 import { importMarkdown, readMarkdownFile } from '../lib/markdown-converter';
 import { htmlToAdoc } from '../lib/paste-converter';
+import { useTranslation } from '../hooks/useTranslation';
 
 type ImportFormat = 'adoc' | 'md' | 'html';
 
@@ -20,6 +21,7 @@ interface ImportedFile {
 
 export const ImportExportModal: React.FC = () => {
     const { isImportModalOpen, closeImportModal, importFile, darkMode } = useEditorStore();
+    const { t } = useTranslation();
     const [isDragging, setIsDragging] = useState(false);
     const [importedFiles, setImportedFiles] = useState<ImportedFile[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export const ImportExportModal: React.FC = () => {
     }, [closeImportModal]);
 
     return (
-        <Modal isOpen={isImportModalOpen} onClose={handleClose} title="Import Files" size="md">
+        <Modal isOpen={isImportModalOpen} onClose={handleClose} title={t('import.title')} size="md">
             <div className="p-6 space-y-4">
                 {/* 拖放区域 */}
                 <div
@@ -143,10 +145,10 @@ export const ImportExportModal: React.FC = () => {
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
                     className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : darkMode
-                                ? 'border-slate-600 hover:border-slate-500 bg-slate-800/50'
-                                : 'border-gray-300 hover:border-gray-400 bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        : darkMode
+                            ? 'border-slate-600 hover:border-slate-500 bg-slate-800/50'
+                            : 'border-gray-300 hover:border-gray-400 bg-gray-50'
                         }`}
                 >
                     <input
@@ -160,23 +162,23 @@ export const ImportExportModal: React.FC = () => {
                     <Upload
                         size={32}
                         className={`mx-auto mb-3 ${isDragging
-                                ? 'text-blue-500'
-                                : darkMode
-                                    ? 'text-slate-500'
-                                    : 'text-gray-400'
+                            ? 'text-blue-500'
+                            : darkMode
+                                ? 'text-slate-500'
+                                : 'text-gray-400'
                             }`}
                     />
                     <p
                         className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'
                             }`}
                     >
-                        Drag and drop files here
+                        {t('import.dragDrop')}
                     </p>
                     <p
                         className={`text-xs mt-1 ${darkMode ? 'text-slate-500' : 'text-gray-500'
                             }`}
                     >
-                        or click to browse
+                        {t('import.orClickToBrowse')}
                     </p>
                 </div>
 
@@ -204,8 +206,8 @@ export const ImportExportModal: React.FC = () => {
                 {error && (
                     <div
                         className={`flex items-center gap-2 p-3 rounded-lg text-sm ${darkMode
-                                ? 'bg-red-900/30 text-red-400 border border-red-900'
-                                : 'bg-red-50 text-red-600 border border-red-200'
+                            ? 'bg-red-900/30 text-red-400 border border-red-900'
+                            : 'bg-red-50 text-red-600 border border-red-200'
                             }`}
                     >
                         <AlertCircle size={16} />
@@ -221,14 +223,14 @@ export const ImportExportModal: React.FC = () => {
                                 className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'
                                     }`}
                             >
-                                Ready to import ({importedFiles.length})
+                                {t('import.readyToImport')} ({importedFiles.length})
                             </span>
                             <button
                                 onClick={clearFiles}
                                 className={`text-xs ${darkMode ? 'text-slate-500 hover:text-slate-300' : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
-                                Clear all
+                                {t('import.clearAll')}
                             </button>
                         </div>
 
@@ -240,10 +242,10 @@ export const ImportExportModal: React.FC = () => {
                                 <div
                                     key={`${file.name}-${index}`}
                                     className={`flex items-center justify-between px-3 py-2 ${index > 0
-                                            ? darkMode
-                                                ? 'border-t border-slate-700'
-                                                : 'border-t border-gray-200'
-                                            : ''
+                                        ? darkMode
+                                            ? 'border-t border-slate-700'
+                                            : 'border-t border-gray-200'
+                                        : ''
                                         } ${darkMode ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'}`}
                                 >
                                     <div className="flex items-center gap-2">
@@ -256,8 +258,8 @@ export const ImportExportModal: React.FC = () => {
                                         </span>
                                         <span
                                             className={`text-[10px] px-1.5 py-0.5 rounded uppercase ${darkMode
-                                                    ? 'bg-slate-700 text-slate-400'
-                                                    : 'bg-gray-100 text-gray-500'
+                                                ? 'bg-slate-700 text-slate-400'
+                                                : 'bg-gray-100 text-gray-500'
                                                 }`}
                                         >
                                             {file.format}
@@ -267,7 +269,7 @@ export const ImportExportModal: React.FC = () => {
                                         onClick={() => handleImport(file)}
                                         className="text-xs text-blue-500 hover:text-blue-600"
                                     >
-                                        Import
+                                        {t('import.import')}
                                     </button>
                                 </div>
                             ))}
@@ -277,7 +279,7 @@ export const ImportExportModal: React.FC = () => {
                             onClick={handleImportAll}
                             className="w-full py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                         >
-                            Import All ({importedFiles.length})
+                            {t('import.importAll')} ({importedFiles.length})
                         </button>
                     </div>
                 )}

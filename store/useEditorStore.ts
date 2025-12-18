@@ -63,6 +63,17 @@ interface EditorState {
   isImportModalOpen: boolean;
   isDiagnosticsModalOpen: boolean;
 
+  // 颜色历史
+  recentColors: { color: string | null; type: 'text' | 'highlight'; name: string }[];
+  addRecentColor: (item: { color: string | null; type: 'text' | 'highlight'; name: string }) => void;
+
+  // 语言设置
+  language: 'zh' | 'en';
+  setLanguage: (lang: 'zh' | 'en') => void;
+
+  // 获取所有页面（用于移动到功能）
+  pages: { id: string; title: string }[];
+
   // Actions
   setFiles: (files: FileItem[]) => void;
   setActiveFile: (id: string) => void;
@@ -154,6 +165,23 @@ export const useEditorStore = create<EditorState>()(
       isSettingsModalOpen: false,
       isImportModalOpen: false,
       isDiagnosticsModalOpen: false,
+
+      recentColors: [],
+      addRecentColor: (item) => set((state) => {
+        const filtered = state.recentColors.filter(c => !(c.color === item.color && c.type === item.type));
+        return { recentColors: [item, ...filtered].slice(0, 5) };
+      }),
+
+      language: 'zh',
+      setLanguage: (lang) => set({ language: lang }),
+
+      // 派生属性：从 files 获取页面列表
+      get pages() {
+        const state = get();
+        return state.files
+          .filter(f => f.type === 'file' && f.id !== state.activeFileId)
+          .map(f => ({ id: f.id, title: f.name.replace(/\.adoc$/, '') }));
+      },
 
       setFiles: (files) => set({ files }),
 

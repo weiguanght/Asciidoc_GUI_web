@@ -16,7 +16,6 @@ import {
     Underline as UnderlineIcon,
     Strikethrough,
     Link as LinkIcon,
-    Highlighter,
     Code,
     X,
     ChevronDown,
@@ -77,13 +76,11 @@ const turnIntoItems = [
 ];
 
 export const BubbleMenuComponent: React.FC<BubbleMenuComponentProps> = ({ editor }) => {
-    const { darkMode } = useEditorStore();
+    const { darkMode, recentColors, addRecentColor } = useEditorStore();
     const [showLinkInput, setShowLinkInput] = useState(false);
     const [linkUrl, setLinkUrl] = useState('');
-    const [showHighlightPicker, setShowHighlightPicker] = useState(false);
     const [showTurnIntoMenu, setShowTurnIntoMenu] = useState(false);
     const [showColorPicker, setShowColorPicker] = useState(false);
-    const [colorTab, setColorTab] = useState<'text' | 'background'>('text');
 
     // 设置链接
     const setLink = useCallback(() => {
@@ -144,28 +141,29 @@ export const BubbleMenuComponent: React.FC<BubbleMenuComponentProps> = ({ editor
     }, [editor]);
 
     // 设置文字颜色
-    const setTextColor = useCallback((color: string | null) => {
+    const setTextColor = useCallback((color: string | null, name: string) => {
         if (color) {
             editor.chain().focus().setColor(color).run();
         } else {
             editor.chain().focus().unsetColor().run();
         }
+        addRecentColor({ color, type: 'text', name });
         setShowColorPicker(false);
-    }, [editor]);
+    }, [editor, addRecentColor]);
 
     // 设置背景色（高亮）
-    const setBackgroundColor = useCallback((color: string | null) => {
+    const setBackgroundColor = useCallback((color: string | null, name: string) => {
         if (color) {
             editor.chain().focus().toggleHighlight({ color }).run();
         } else {
             editor.chain().focus().unsetHighlight().run();
         }
+        addRecentColor({ color, type: 'highlight', name });
         setShowColorPicker(false);
-    }, [editor]);
+    }, [editor, addRecentColor]);
 
     // 关闭所有弹出菜单
     const closeAllMenus = () => {
-        setShowHighlightPicker(false);
         setShowTurnIntoMenu(false);
         setShowColorPicker(false);
     };
@@ -352,7 +350,7 @@ export const BubbleMenuComponent: React.FC<BubbleMenuComponentProps> = ({ editor
                         <LinkIcon size={16} />
                     </button>
 
-                    {/* 颜色选择器 (Notion 风格) */}
+                    {/* 颜色选择器 (Notion 风格 - 统一面板) */}
                     <div className="relative">
                         <button
                             onClick={() => {
@@ -360,7 +358,7 @@ export const BubbleMenuComponent: React.FC<BubbleMenuComponentProps> = ({ editor
                                 setShowColorPicker(!showColorPicker);
                             }}
                             className={buttonClass(false)}
-                            title="Color"
+                            title="Color & Background"
                         >
                             <Palette size={16} />
                         </button>
@@ -372,113 +370,70 @@ export const BubbleMenuComponent: React.FC<BubbleMenuComponentProps> = ({ editor
                                     onClick={() => setShowColorPicker(false)}
                                 />
                                 <div
-                                    className={`absolute top-full right-0 mt-1 p-2 rounded-lg shadow-lg border z-20 w-48 ${darkMode
+                                    className={`absolute top-full right-0 mt-1 p-2 rounded-lg shadow-lg border z-20 w-[220px] max-h-[400px] overflow-y-auto ${darkMode
                                         ? 'bg-slate-800 border-slate-700'
                                         : 'bg-white border-gray-200'
                                         }`}
                                 >
-                                    {/* 标签切换 */}
-                                    <div className="flex gap-1 mb-2">
-                                        <button
-                                            onClick={() => setColorTab('text')}
-                                            className={`flex-1 px-2 py-1 text-xs rounded ${colorTab === 'text'
-                                                    ? darkMode ? 'bg-slate-600 text-white' : 'bg-gray-200 text-gray-900'
-                                                    : darkMode ? 'text-slate-400' : 'text-gray-500'
-                                                }`}
-                                        >
-                                            Text
-                                        </button>
-                                        <button
-                                            onClick={() => setColorTab('background')}
-                                            className={`flex-1 px-2 py-1 text-xs rounded ${colorTab === 'background'
-                                                    ? darkMode ? 'bg-slate-600 text-white' : 'bg-gray-200 text-gray-900'
-                                                    : darkMode ? 'text-slate-400' : 'text-gray-500'
-                                                }`}
-                                        >
-                                            Background
-                                        </button>
+                                    {/* Recent Colors */}
+                                    {recentColors.length > 0 && (
+                                        <div className="mb-2">
+                                            <div className="text-[10px] uppercase text-gray-400 mb-1 px-1 font-semibold">Recent</div>
+                                            <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+                                                {recentColors.map((item, index) => (
+                                                    <button
+                                                        key={`${item.name}-${index}`}
+                                                        onClick={() => item.type === 'text'
+                                                            ? setTextColor(item.color, item.name)
+                                                            : setBackgroundColor(item.color, item.name)
+                                                        }
+                                                        className="min-w-[32px] w-8 h-8 rounded border flex items-center justify-center text-sm hover:scale-110 transition-transform"
+                                                        style={{
+                                                            backgroundColor: item.type === 'highlight' ? (item.color || 'transparent') : undefined,
+                                                            color: item.type === 'text' ? (item.color || 'inherit') : undefined,
+                                                            borderColor: item.color || '#e5e7eb',
+                                                        }}
+                                                        title={item.name}
+                                                    >
+                                                        {item.type === 'text' && 'A'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Text Colors */}
+                                    <div className="mb-2">
+                                        <div className="text-[10px] uppercase text-gray-400 mb-1 px-1 font-semibold">Color</div>
+                                        <div className="grid grid-cols-5 gap-1">
+                                            {notionColors.text.map((color) => (
+                                                <button
+                                                    key={color.name}
+                                                    onClick={() => setTextColor(color.value, color.name)}
+                                                    className="w-8 h-8 rounded border flex items-center justify-center text-sm hover:scale-110 transition-transform"
+                                                    style={{ color: color.value || 'inherit', borderColor: color.value || '#e5e7eb' }}
+                                                    title={color.name}
+                                                >
+                                                    {color.value === null ? <X size={12} className={darkMode ? 'text-slate-400' : 'text-gray-400'} /> : 'A'}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
 
-                                    {/* 颜色网格 */}
-                                    <div className="grid grid-cols-5 gap-1">
-                                        {(colorTab === 'text' ? notionColors.text : notionColors.background).map((color) => (
-                                            <button
-                                                key={color.name}
-                                                onClick={() =>
-                                                    colorTab === 'text'
-                                                        ? setTextColor(color.value)
-                                                        : setBackgroundColor(color.value)
-                                                }
-                                                className={`w-7 h-7 rounded border flex items-center justify-center text-xs ${darkMode ? 'border-slate-600' : 'border-gray-200'
-                                                    } hover:scale-110 transition-transform`}
-                                                style={{
-                                                    backgroundColor: colorTab === 'background' ? (color.value || 'transparent') : undefined,
-                                                    color: colorTab === 'text' ? (color.value || 'inherit') : undefined,
-                                                }}
-                                                title={color.name}
-                                            >
-                                                {color.value === null ? (
-                                                    <X size={12} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
-                                                ) : colorTab === 'text' ? (
-                                                    'A'
-                                                ) : null}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* 高亮（保留旧版快速高亮） */}
-                    <div className="relative">
-                        <button
-                            onClick={() => {
-                                closeAllMenus();
-                                setShowHighlightPicker(!showHighlightPicker);
-                            }}
-                            className={buttonClass(editor.isActive('highlight'))}
-                            title="Highlight"
-                        >
-                            <Highlighter size={16} />
-                        </button>
-
-                        {showHighlightPicker && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-10"
-                                    onClick={() => setShowHighlightPicker(false)}
-                                />
-                                <div
-                                    className={`absolute top-full right-0 mt-1 p-1.5 rounded-lg shadow-lg border z-20 ${darkMode
-                                        ? 'bg-slate-800 border-slate-700'
-                                        : 'bg-white border-gray-200'
-                                        }`}
-                                >
-                                    <div className="flex gap-1">
-                                        {notionColors.background.slice(1).map((color) => (
-                                            <button
-                                                key={color.name}
-                                                onClick={() => {
-                                                    editor.chain().focus().toggleHighlight({ color: color.value! }).run();
-                                                    setShowHighlightPicker(false);
-                                                }}
-                                                className="w-6 h-6 rounded border border-gray-300 hover:scale-110 transition-transform"
-                                                style={{ backgroundColor: color.value! }}
-                                                title={color.name}
-                                            />
-                                        ))}
-                                        <button
-                                            onClick={() => {
-                                                editor.chain().focus().unsetHighlight().run();
-                                                setShowHighlightPicker(false);
-                                            }}
-                                            className={`w-6 h-6 rounded border flex items-center justify-center ${darkMode ? 'border-slate-600 text-slate-400' : 'border-gray-300 text-gray-500'
-                                                }`}
-                                            title="Remove Highlight"
-                                        >
-                                            <X size={12} />
-                                        </button>
+                                    {/* Background Colors */}
+                                    <div>
+                                        <div className="text-[10px] uppercase text-gray-400 mb-1 px-1 font-semibold">Background</div>
+                                        <div className="grid grid-cols-5 gap-1">
+                                            {notionColors.background.map((color) => (
+                                                <button
+                                                    key={color.name}
+                                                    onClick={() => setBackgroundColor(color.value, color.name)}
+                                                    className="w-8 h-8 rounded border flex items-center justify-center text-sm hover:scale-110 transition-transform"
+                                                    style={{ backgroundColor: color.value || 'transparent', borderColor: color.value || '#e5e7eb' }}
+                                                    title={color.name}
+                                                />
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </>

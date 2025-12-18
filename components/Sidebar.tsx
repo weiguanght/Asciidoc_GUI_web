@@ -4,6 +4,7 @@ import { useEditorStore } from '../store/useEditorStore';
 import { Button } from './ui/Button';
 import { FileItem } from '../types';
 import { openLocalFile, saveLocalFile, saveLocalFileAs, isFileSystemAccessSupported } from '../lib/file-system-access';
+import { useTranslation } from '../hooks/useTranslation';
 
 // 大纲项接口
 interface OutlineItem {
@@ -59,6 +60,8 @@ export const Sidebar: React.FC = () => {
     openImportModal,
     openDiagnosticsModal,
   } = useEditorStore();
+
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<'files' | 'outline'>('files');
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
@@ -240,7 +243,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             <FileText size={14} />
-            Files
+            {t('sidebar.files')}
           </button>
           <button
             onClick={() => setActiveTab('outline')}
@@ -250,7 +253,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             <List size={14} />
-            Outline
+            {t('sidebar.outline')}
           </button>
         </div>
 
@@ -261,7 +264,7 @@ export const Sidebar: React.FC = () => {
               <Search size={14} className={`absolute left-2.5 top-2.5 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`} />
               <input
                 type="text"
-                placeholder="Search files..."
+                placeholder={t('sidebar.searchFiles')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full pl-8 pr-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow ${darkMode
@@ -279,7 +282,7 @@ export const Sidebar: React.FC = () => {
             <>
               {/* 文件列表标题和新建文件夹 */}
               <div className={`flex items-center justify-between px-2 mt-2 mb-2`}>
-                <span className={`text-[10px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>Documents</span>
+                <span className={`text-[10px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('sidebar.documents')}</span>
                 <button
                   onClick={() => setShowNewFolderInput(!showNewFolderInput)}
                   className={`p-1 rounded ${darkMode ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
@@ -301,7 +304,7 @@ export const Sidebar: React.FC = () => {
                       if (e.key === 'Escape') { setShowNewFolderInput(false); setNewFolderName(''); }
                     }}
                     onBlur={handleCreateFolder}
-                    placeholder="Folder name..."
+                    placeholder={t('sidebar.folderName')}
                     className={`w-full px-2 py-1.5 text-sm rounded border focus:outline-none focus:ring-1 focus:ring-blue-500 ${darkMode ? 'bg-slate-700 border-slate-600 text-slate-200' : 'bg-white border-gray-300'
                       }`}
                     autoFocus
@@ -386,7 +389,7 @@ export const Sidebar: React.FC = () => {
                                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                                       }`}
                                   >
-                                    <Pencil size={14} /> Rename
+                                    <Pencil size={14} /> {t('sidebar.rename')}
                                   </button>
                                   {(files.length > 1 || isFolder) && (
                                     <button
@@ -397,7 +400,7 @@ export const Sidebar: React.FC = () => {
                                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 ${darkMode ? 'hover:bg-slate-600' : 'hover:bg-gray-100'
                                         }`}
                                     >
-                                      <Trash2 size={14} /> Delete
+                                      <Trash2 size={14} /> {t('sidebar.delete')}
                                     </button>
                                   )}
                                   {/* 移动选项 - 仅对文件显示 */}
@@ -411,7 +414,7 @@ export const Sidebar: React.FC = () => {
                                       className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                                         }`}
                                     >
-                                      <Move size={14} /> Move to...
+                                      <Move size={14} /> {t('sidebar.moveTo')}
                                     </button>
                                   )}
                                 </div>
@@ -448,11 +451,11 @@ export const Sidebar: React.FC = () => {
             <>
               {/* 大纲视图 */}
               <div className={`text-[10px] uppercase font-bold mb-2 px-2 mt-3 tracking-wider ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                Document Outline
+                {t('sidebar.documentOutline')}
               </div>
               {outlineItems.length === 0 ? (
                 <div className={`text-sm px-3 py-4 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                  No headings found in document.
+                  {t('sidebar.noHeadings')}
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -492,7 +495,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             <Plus size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
-            New Document
+            {t('sidebar.newDocument')}
           </button>
 
           {/* 分隔线 */}
@@ -507,7 +510,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             <Download size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
-            Import
+            {t('sidebar.import')}
           </button>
 
           {/* Settings */}
@@ -519,7 +522,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             <Settings size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
-            Settings
+            {t('sidebar.settings')}
           </button>
 
           {/* Help & Logs */}
@@ -531,7 +534,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             <HelpCircle size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
-            Help & Logs
+            {t('sidebar.helpLogs')}
           </button>
 
           {/* 深色模式切换 */}
@@ -544,7 +547,7 @@ export const Sidebar: React.FC = () => {
               }`}
           >
             {darkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-400" />}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
+            {darkMode ? t('sidebar.lightMode') : t('sidebar.darkMode')}
           </button>
         </div>
       </aside>
@@ -556,7 +559,7 @@ export const Sidebar: React.FC = () => {
           <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-2xl p-6 z-[60] w-80 ${darkMode ? 'bg-slate-800 text-slate-200' : 'bg-white text-gray-900'
             }`}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Move to Folder</h3>
+              <h3 className="text-lg font-semibold">{t('sidebar.moveToFolder')}</h3>
               <button onClick={() => setMoveDialogId(null)} className={`p-1 rounded ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
                 <X size={18} />
               </button>
@@ -573,7 +576,7 @@ export const Sidebar: React.FC = () => {
                   }`}
               >
                 <Folder size={16} className={darkMode ? 'text-amber-400' : 'text-amber-500'} />
-                <span>Root (No folder)</span>
+                <span>{t('sidebar.root')}</span>
               </button>
 
               {/* 文件夹列表 */}
@@ -594,7 +597,7 @@ export const Sidebar: React.FC = () => {
 
               {files.filter(f => f.type === 'folder').length === 0 && (
                 <p className={`text-sm px-3 py-2 ${darkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                  No folders found. Create a folder first.
+                  {t('sidebar.noFolders')}
                 </p>
               )}
             </div>
@@ -605,7 +608,7 @@ export const Sidebar: React.FC = () => {
                 className={`px-4 py-2 text-sm font-medium rounded-lg ${darkMode ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-700 hover:bg-gray-100'
                   }`}
               >
-                Cancel
+                {t('sidebar.cancel')}
               </button>
             </div>
           </div>

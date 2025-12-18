@@ -1,13 +1,13 @@
 /**
- * BlockMenu - 块操作菜单组件
+ * BlockMenu - 块操作菜单组件 (Notion 风格)
  * 
  * 功能：
- * - 删除块
- * - 复制块
- * - 移动块（上/下）
- * - 转换块类型
- * - 颜色设置（背景色）
+ * - 转换为其他类型 (hover 展开)
+ * - 颜色设置 (hover 展开)
  * - 复制块链接
+ * - 创建副本
+ * - 移动到（其他文件）
+ * - 删除块
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,8 +15,6 @@ import { Editor } from '@tiptap/core';
 import {
     Trash2,
     Copy,
-    ArrowUp,
-    ArrowDown,
     Type,
     Heading1,
     Heading2,
@@ -25,28 +23,25 @@ import {
     ListOrdered,
     Code,
     Quote,
-    X,
     Palette,
     Link2,
     CheckSquare,
+    ChevronRight,
+    ArrowUpRight,
+    RefreshCw,
 } from 'lucide-react';
+import { useEditorStore } from '../store/useEditorStore';
 
 // ============================================
 // 类型定义
 // ============================================
 
 export interface BlockMenuProps {
-    /** 是否显示 */
     isOpen: boolean;
-    /** 块 ID */
     blockId: string;
-    /** 菜单位置 */
     position: { x: number; y: number };
-    /** 块在文档中的位置 */
     blockPos: number;
-    /** 关闭回调 */
     onClose: () => void;
-    /** 编辑器实例 */
     editor: Editor | null;
 }
 
@@ -57,19 +52,64 @@ interface MenuItem {
     divider?: boolean;
 }
 
-// Notion 风格背景色
-const blockColors = [
-    { name: 'Default', value: null },
-    { name: 'Gray', value: '#F1F1EF' },
-    { name: 'Brown', value: '#F4EEEE' },
-    { name: 'Orange', value: '#FBECDD' },
-    { name: 'Yellow', value: '#FBF3DB' },
-    { name: 'Green', value: '#EDF3EC' },
-    { name: 'Blue', value: '#E7F3F8' },
-    { name: 'Purple', value: '#F6F3F9' },
-    { name: 'Pink', value: '#FAF1F5' },
-    { name: 'Red', value: '#FDEBEC' },
+// Notion 风格颜色配置 (带中文标签)
+const textColors = [
+    { name: '默认', value: null, label: '默认文本' },
+    { name: '灰色', value: '#9B9A97', label: '灰色文本' },
+    { name: '棕色', value: '#64473A', label: '棕色文本' },
+    { name: '橙色', value: '#D9730D', label: '橙色文本' },
+    { name: '黄色', value: '#CB912F', label: '黄色文本' },
+    { name: '绿色', value: '#448361', label: '绿色文本' },
+    { name: '蓝色', value: '#337EA9', label: '蓝色文本' },
+    { name: '紫色', value: '#9065B0', label: '紫色文本' },
+    { name: '粉色', value: '#C14C8A', label: '粉色文本' },
+    { name: '红色', value: '#D44C47', label: '红色文本' },
 ];
+
+const backgroundColors = [
+    { name: '默认', value: null, label: '默认背景' },
+    { name: '灰色', value: '#EBECED', label: '灰色背景' },
+    { name: '棕色', value: '#E9E5E3', label: '棕色背景' },
+    { name: '橙色', value: '#FAEBDD', label: '橙色背景' },
+    { name: '黄色', value: '#FBF3DB', label: '黄色背景' },
+    { name: '绿色', value: '#DDEDEA', label: '绿色背景' },
+    { name: '蓝色', value: '#DDEBF1', label: '蓝色背景' },
+    { name: '紫色', value: '#EAE4F2', label: '紫色背景' },
+    { name: '粉色', value: '#F4DFEB', label: '粉色背景' },
+    { name: '红色', value: '#FBE4E4', label: '红色背景' },
+];
+
+// ============================================
+// Toast 通知组件
+// ============================================
+
+interface ToastProps {
+    message: string;
+    actionLabel?: string;
+    onAction?: () => void;
+    onClose: () => void;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, actionLabel, onAction, onClose }) => {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 5000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
+
+    return (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-[9999]">
+            <span>{message}</span>
+            {actionLabel && onAction && (
+                <button
+                    onClick={onAction}
+                    className="text-blue-400 hover:text-blue-300 font-medium"
+                >
+                    {actionLabel}
+                </button>
+            )}
+        </div>
+    );
+};
 
 // ============================================
 // BlockMenu 组件
@@ -86,6 +126,9 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
     const menuRef = useRef<HTMLDivElement>(null);
     const [showTransformMenu, setShowTransformMenu] = useState(false);
     const [showColorMenu, setShowColorMenu] = useState(false);
+    const [showMoveMenu, setShowMoveMenu] = useState(false);
+    const [toast, setToast] = useState<{ message: string; onUndo?: () => void } | null>(null);
+    const { recentColors, addRecentColor, pages } = useEditorStore();
 
     // 点击外部关闭
     useEffect(() => {
@@ -126,6 +169,7 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         if (!isOpen) {
             setShowTransformMenu(false);
             setShowColorMenu(false);
+            setShowMoveMenu(false);
         }
     }, [isOpen]);
 
@@ -143,53 +187,16 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         onClose();
     };
 
-    // 复制块（深拷贝）
+    // 复制块（创建副本）
     const duplicateBlock = () => {
         const node = getNode();
         if (node) {
             const insertPos = blockPos + node.nodeSize;
-            // 使用 node.toJSON() 进行深拷贝
             const nodeJson = node.toJSON();
-            // 移除 id 属性以便自动生成新 ID
             if (nodeJson.attrs) {
                 delete nodeJson.attrs.id;
             }
             editor.chain().focus().insertContentAt(insertPos, nodeJson).run();
-        }
-        onClose();
-    };
-
-    // 向上移动
-    const moveUp = () => {
-        if (blockPos > 0) {
-            const $pos = editor.state.doc.resolve(blockPos);
-            const prevPos = $pos.before($pos.depth);
-            if (prevPos >= 0) {
-                const node = getNode();
-                if (node) {
-                    editor.chain().focus()
-                        .deleteRange({ from: blockPos, to: blockPos + node.nodeSize })
-                        .insertContentAt(prevPos, node.toJSON())
-                        .run();
-                }
-            }
-        }
-        onClose();
-    };
-
-    // 向下移动
-    const moveDown = () => {
-        const node = getNode();
-        if (node) {
-            const nextPos = blockPos + node.nodeSize;
-            const nextNode = editor.state.doc.nodeAt(nextPos);
-            if (nextNode) {
-                const insertPos = nextPos + nextNode.nodeSize;
-                editor.chain().focus()
-                    .deleteRange({ from: blockPos, to: blockPos + node.nodeSize })
-                    .insertContentAt(insertPos - node.nodeSize, node.toJSON())
-                    .run();
-            }
         }
         onClose();
     };
@@ -199,11 +206,38 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         const url = `${window.location.href.split('#')[0]}#block-${blockId}`;
         try {
             await navigator.clipboard.writeText(url);
-            // 可以添加 toast 提示
             console.log('[BlockMenu] Copied link:', url);
         } catch (err) {
             console.error('[BlockMenu] Failed to copy link:', err);
         }
+        onClose();
+    };
+
+    // 移动到其他文件
+    const moveToPage = (pageId: string, pageTitle: string) => {
+        const node = getNode();
+        if (!node) return;
+
+        // 保存节点内容用于撤回
+        const nodeJson = node.toJSON();
+        const originalPos = blockPos;
+
+        // 删除当前块
+        editor.chain().focus().deleteRange({ from: blockPos, to: blockPos + node.nodeSize }).run();
+
+        // TODO: 实际移动到目标页面 (需要页面管理 API)
+        console.log('[BlockMenu] Moving block to page:', pageId);
+
+        // 显示 Toast
+        setToast({
+            message: `已移动到「${pageTitle}」`,
+            onUndo: () => {
+                // 撤回移动
+                editor.chain().focus().insertContentAt(originalPos, nodeJson).run();
+                setToast(null);
+            },
+        });
+
         onClose();
     };
 
@@ -231,197 +265,294 @@ export const BlockMenu: React.FC<BlockMenuProps> = ({
         onClose();
     };
 
-    // 设置块背景色（通过包裹 div 或自定义属性）
-    const setBlockColor = (color: string | null) => {
-        // TODO: 需要实现块级背景色
-        // 目前 Tiptap 没有原生支持块级背景色，可以通过扩展节点属性实现
-        console.log('[BlockMenu] Set block color:', color);
+    // 设置文本颜色
+    const setTextColor = (color: string | null, label: string) => {
+        const node = getNode();
+        if (node) {
+            editor.chain().focus()
+                .setTextSelection({ from: blockPos + 1, to: blockPos + node.nodeSize - 1 })
+                .run();
+
+            if (color) {
+                editor.chain().focus().setColor(color).run();
+            } else {
+                editor.chain().focus().unsetColor().run();
+            }
+        }
+        addRecentColor({ color, type: 'text', name: label });
         setShowColorMenu(false);
         onClose();
     };
 
-    const mainMenuItems: MenuItem[] = [
-        {
-            label: '删除',
-            icon: <Trash2 size={16} />,
-            action: deleteBlock,
-        },
-        {
-            label: '复制',
-            icon: <Copy size={16} />,
-            action: duplicateBlock,
-        },
-        {
-            label: '复制链接',
-            icon: <Link2 size={16} />,
-            action: copyLinkToBlock,
-            divider: true,
-        },
-        {
-            label: '向上移动',
-            icon: <ArrowUp size={16} />,
-            action: moveUp,
-        },
-        {
-            label: '向下移动',
-            icon: <ArrowDown size={16} />,
-            action: moveDown,
-        },
-    ];
+    // 设置背景色
+    const setBackgroundColor = (color: string | null, label: string) => {
+        const node = getNode();
+        if (node) {
+            editor.chain().focus()
+                .setTextSelection({ from: blockPos + 1, to: blockPos + node.nodeSize - 1 })
+                .run();
 
-    const transformMenuItems: MenuItem[] = [
-        {
-            label: '段落',
-            icon: <Type size={16} />,
-            action: () => transformTo('paragraph'),
-        },
-        {
-            label: '一级标题',
-            icon: <Heading1 size={16} />,
-            action: () => transformTo('heading', { level: 1 }),
-        },
-        {
-            label: '二级标题',
-            icon: <Heading2 size={16} />,
-            action: () => transformTo('heading', { level: 2 }),
-        },
-        {
-            label: '三级标题',
-            icon: <Heading3 size={16} />,
-            action: () => transformTo('heading', { level: 3 }),
-        },
-        {
-            label: '无序列表',
-            icon: <List size={16} />,
-            action: () => toggleList('bulletList'),
-        },
-        {
-            label: '有序列表',
-            icon: <ListOrdered size={16} />,
-            action: () => toggleList('orderedList'),
-        },
-        {
-            label: '待办清单',
-            icon: <CheckSquare size={16} />,
-            action: () => toggleList('taskList'),
-        },
-        {
-            label: '代码块',
-            icon: <Code size={16} />,
-            action: () => transformTo('codeBlock'),
-        },
-        {
-            label: '引用',
-            icon: <Quote size={16} />,
-            action: () => editor.chain().focus().toggleBlockquote().run(),
-        },
-    ];
-
-    // 渲染子菜单
-    const renderSubMenu = () => {
-        if (showTransformMenu) {
-            return (
-                <>
-                    <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-slate-700">
-                        <span>转换为</span>
-                        <button
-                            onClick={() => setShowTransformMenu(false)}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
-                    {transformMenuItems.map((item, index) => (
-                        <button
-                            key={index}
-                            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                            onClick={item.action}
-                        >
-                            <span className="text-gray-400">{item.icon}</span>
-                            <span>{item.label}</span>
-                        </button>
-                    ))}
-                </>
-            );
+            if (color) {
+                editor.chain().focus().toggleHighlight({ color }).run();
+            } else {
+                editor.chain().focus().unsetHighlight().run();
+            }
         }
-
-        if (showColorMenu) {
-            return (
-                <>
-                    <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-slate-700">
-                        <span>背景色</span>
-                        <button
-                            onClick={() => setShowColorMenu(false)}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
-                    <div className="p-2 grid grid-cols-5 gap-1">
-                        {blockColors.map((color) => (
-                            <button
-                                key={color.name}
-                                onClick={() => setBlockColor(color.value)}
-                                className="w-7 h-7 rounded border border-gray-200 dark:border-slate-600 hover:scale-110 transition-transform flex items-center justify-center"
-                                style={{ backgroundColor: color.value || 'transparent' }}
-                                title={color.name}
-                            >
-                                {color.value === null && <X size={12} className="text-gray-400" />}
-                            </button>
-                        ))}
-                    </div>
-                </>
-            );
-        }
-
-        return null;
+        addRecentColor({ color, type: 'highlight', name: label });
+        setShowColorMenu(false);
+        onClose();
     };
 
-    return (
+    // 从最近颜色应用
+    const applyRecentColor = (item: { color: string | null; type: 'text' | 'highlight'; name: string }) => {
+        if (item.type === 'text') {
+            setTextColor(item.color, item.name);
+        } else {
+            setBackgroundColor(item.color, item.name);
+        }
+    };
+
+    // 获取当前块类型名称
+    const getCurrentTypeName = () => {
+        const node = getNode();
+        if (!node) return '文本';
+        switch (node.type.name) {
+            case 'heading':
+                const level = node.attrs.level;
+                return `标题 ${level}`;
+            case 'bulletList': return '无序列表';
+            case 'orderedList': return '有序列表';
+            case 'taskList': return '待办清单';
+            case 'codeBlock': return '代码块';
+            case 'blockquote': return '引用';
+            default: return '文本';
+        }
+    };
+
+    const transformMenuItems: MenuItem[] = [
+        { label: '文本', icon: <Type size={16} />, action: () => transformTo('paragraph') },
+        { label: '标题 1', icon: <Heading1 size={16} />, action: () => transformTo('heading', { level: 1 }) },
+        { label: '标题 2', icon: <Heading2 size={16} />, action: () => transformTo('heading', { level: 2 }) },
+        { label: '标题 3', icon: <Heading3 size={16} />, action: () => transformTo('heading', { level: 3 }) },
+        { label: '无序列表', icon: <List size={16} />, action: () => toggleList('bulletList') },
+        { label: '有序列表', icon: <ListOrdered size={16} />, action: () => toggleList('orderedList') },
+        { label: '待办清单', icon: <CheckSquare size={16} />, action: () => toggleList('taskList') },
+        { label: '代码块', icon: <Code size={16} />, action: () => transformTo('codeBlock') },
+        { label: '引用', icon: <Quote size={16} />, action: () => editor.chain().focus().toggleBlockquote().run() },
+    ];
+
+    // 渲染颜色子菜单
+    const renderColorFlyout = () => (
         <div
-            ref={menuRef}
-            className="block-menu fixed bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 z-50 min-w-[180px]"
-            style={{
-                left: position.x,
-                top: position.y,
-            }}
+            className="fixed left-auto ml-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 min-w-[180px] z-50 max-h-[80vh] overflow-y-auto"
+            style={{ top: '50%', transform: 'translateY(-50%)', left: position.x + 190 }}
         >
-            {showTransformMenu || showColorMenu ? (
-                renderSubMenu()
-            ) : (
+            {/* 最近使用 */}
+            {recentColors.length > 0 && (
                 <>
-                    {mainMenuItems.map((item, index) => (
-                        <React.Fragment key={index}>
-                            <button
-                                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                                onClick={item.action}
+                    <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">最近使用</div>
+                    {recentColors.map((item, index) => (
+                        <button
+                            key={`recent-${index}`}
+                            className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                            onClick={() => applyRecentColor(item)}
+                        >
+                            <span
+                                className="w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center"
+                                style={{
+                                    backgroundColor: item.type === 'highlight' ? (item.color || '#fff') : '#fff',
+                                    borderColor: item.color || '#e5e7eb',
+                                }}
                             >
-                                <span className="text-gray-400">{item.icon}</span>
-                                <span>{item.label}</span>
-                            </button>
-                            {item.divider && (
-                                <div className="border-t border-gray-100 dark:border-slate-700 my-1" />
-                            )}
-                        </React.Fragment>
+                                {item.type === 'text' && <span className="text-xs font-bold" style={{ color: item.color || 'inherit' }}>A</span>}
+                            </span>
+                            <span>{item.name}</span>
+                        </button>
                     ))}
-                    <div className="border-t border-gray-100 dark:border-slate-700 my-1" />
-                    <button
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                        onClick={() => setShowColorMenu(true)}
-                    >
-                        <span className="text-gray-400"><Palette size={16} /></span>
-                        <span>颜色</span>
-                    </button>
-                    <button
-                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-                        onClick={() => setShowTransformMenu(true)}
-                    >
-                        <span className="text-gray-400"><Type size={16} /></span>
-                        <span>转换为...</span>
-                    </button>
+                    <div className="border-t border-gray-200 dark:border-slate-700 my-1" />
                 </>
             )}
+
+            {/* 文本颜色 */}
+            <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">文本颜色</div>
+            {textColors.map((color) => (
+                <button
+                    key={`text-${color.name}`}
+                    className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={() => setTextColor(color.value, color.label)}
+                >
+                    <span
+                        className="w-5 h-5 rounded border flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{ borderColor: color.value || '#e5e7eb', color: color.value || 'inherit' }}
+                    >
+                        A
+                    </span>
+                    <span>{color.label}</span>
+                </button>
+            ))}
+
+            <div className="border-t border-gray-200 dark:border-slate-700 my-1" />
+
+            {/* 背景颜色 */}
+            <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">背景颜色</div>
+            {backgroundColors.map((color) => (
+                <button
+                    key={`bg-${color.name}`}
+                    className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={() => setBackgroundColor(color.value, color.label)}
+                >
+                    <span
+                        className="w-5 h-5 rounded border flex-shrink-0"
+                        style={{ borderColor: color.value || '#e5e7eb', backgroundColor: color.value || 'transparent' }}
+                    />
+                    <span>{color.label}</span>
+                </button>
+            ))}
         </div>
+    );
+
+    // 渲染转换子菜单
+    const renderTransformFlyout = () => (
+        <div
+            className="fixed left-auto ml-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 min-w-[160px] z-50"
+            style={{ top: '50%', transform: 'translateY(-50%)', left: position.x + 190 }}
+        >
+            {transformMenuItems.map((item, index) => (
+                <button
+                    key={index}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={item.action}
+                >
+                    <span className="text-gray-400">{item.icon}</span>
+                    <span>{item.label}</span>
+                </button>
+            ))}
+        </div>
+    );
+
+    // 渲染移动到子菜单
+    const renderMoveFlyout = () => (
+        <div
+            className="fixed left-auto ml-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 min-w-[200px] z-50"
+            style={{ top: '50%', transform: 'translateY(-50%)', left: position.x + 190 }}
+        >
+            <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">移动到页面</div>
+            {pages && pages.length > 0 ? (
+                pages.map((page) => (
+                    <button
+                        key={page.id}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                        onClick={() => moveToPage(page.id, page.title || '无标题')}
+                    >
+                        <span className="text-gray-400">📄</span>
+                        <span className="truncate">{page.title || '无标题'}</span>
+                    </button>
+                ))
+            ) : (
+                <div className="px-3 py-2 text-sm text-gray-400">暂无其他页面</div>
+            )}
+        </div>
+    );
+
+    return (
+        <>
+            <div
+                ref={menuRef}
+                className="block-menu fixed bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-700 py-1 z-50 min-w-[200px]"
+                style={{
+                    left: position.x,
+                    top: position.y,
+                }}
+            >
+                {/* 当前块类型 */}
+                <div className="px-3 py-2 text-xs text-gray-400 font-medium border-b border-gray-100 dark:border-slate-700">
+                    {getCurrentTypeName()}
+                </div>
+
+                {/* 转换成 (hover 触发) */}
+                <div
+                    className="relative"
+                    onMouseEnter={() => { setShowTransformMenu(true); setShowColorMenu(false); setShowMoveMenu(false); }}
+                    onMouseLeave={() => setShowTransformMenu(false)}
+                >
+                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-gray-400"><RefreshCw size={16} /></span>
+                        <span className="flex-1 text-left">转换成</span>
+                        <ChevronRight size={14} className="text-gray-400" />
+                    </button>
+                    {showTransformMenu && renderTransformFlyout()}
+                </div>
+
+                {/* 颜色 (hover 触发) */}
+                <div
+                    className="relative"
+                    onMouseEnter={() => { setShowColorMenu(true); setShowTransformMenu(false); setShowMoveMenu(false); }}
+                    onMouseLeave={() => setShowColorMenu(false)}
+                >
+                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-gray-400"><Palette size={16} /></span>
+                        <span className="flex-1 text-left">颜色</span>
+                        <ChevronRight size={14} className="text-gray-400" />
+                    </button>
+                    {showColorMenu && renderColorFlyout()}
+                </div>
+
+                <div className="border-t border-gray-100 dark:border-slate-700 my-1" />
+
+                {/* 拷贝区块链接 */}
+                <button
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={copyLinkToBlock}
+                >
+                    <span className="text-gray-400"><Link2 size={16} /></span>
+                    <span>拷贝区块链接</span>
+                </button>
+
+                {/* 创建副本 */}
+                <button
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={duplicateBlock}
+                >
+                    <span className="text-gray-400"><Copy size={16} /></span>
+                    <span>创建副本</span>
+                </button>
+
+                {/* 移动到 (hover 触发) */}
+                <div
+                    className="relative"
+                    onMouseEnter={() => { setShowMoveMenu(true); setShowTransformMenu(false); setShowColorMenu(false); }}
+                    onMouseLeave={() => setShowMoveMenu(false)}
+                >
+                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                        <span className="text-gray-400"><ArrowUpRight size={16} /></span>
+                        <span className="flex-1 text-left">移动到</span>
+                        <ChevronRight size={14} className="text-gray-400" />
+                    </button>
+                    {showMoveMenu && renderMoveFlyout()}
+                </div>
+
+                <div className="border-t border-gray-100 dark:border-slate-700 my-1" />
+
+                {/* 删除 */}
+                <button
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    onClick={deleteBlock}
+                >
+                    <Trash2 size={16} />
+                    <span>删除</span>
+                </button>
+            </div>
+
+            {/* Toast 通知 */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    actionLabel={toast.onUndo ? '撤回' : undefined}
+                    onAction={toast.onUndo}
+                    onClose={() => setToast(null)}
+                />
+            )}
+        </>
     );
 };
 

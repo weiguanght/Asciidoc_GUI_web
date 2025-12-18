@@ -13,6 +13,7 @@ import { ViewMode } from '../types';
 import { adocToHtml } from '../lib/asciidoc';
 import { exportAsZip } from '../lib/zip-export';
 import { exportToPdf } from '../lib/pdf-export';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -279,6 +280,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
   const [widthMenuOpen, setWidthMenuOpen] = useState(false);
 
   const activeFile = files.find(f => f.id === activeFileId);
+  const { t } = useTranslation();
 
   // 全局快捷键：Ctrl/Cmd + F 打开搜索
   useEffect(() => {
@@ -417,7 +419,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().undo()}
-            title="Undo"
+            title={t('toolbar.undo')}
           >
             <Undo size={18} />
           </Button>
@@ -425,7 +427,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().redo()}
-            title="Redo"
+            title={t('toolbar.redo')}
           >
             <Redo size={18} />
           </Button>
@@ -437,7 +439,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleBold().run()}
             active={editor.isActive('bold')}
-            title="Bold"
+            title={t('toolbar.bold')}
           >
             <Bold size={18} />
           </Button>
@@ -445,7 +447,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive('italic')}
-            title="Italic"
+            title={t('toolbar.italic')}
           >
             <Italic size={18} />
           </Button>
@@ -453,7 +455,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             active={editor.isActive('underline')}
-            title="Underline"
+            title={t('toolbar.underline')}
           >
             <Underline size={18} />
           </Button>
@@ -461,7 +463,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleStrike().run()}
             active={editor.isActive('strike')}
-            title="Strikethrough"
+            title={t('toolbar.strikethrough')}
           >
             <Strikethrough size={18} />
           </Button>
@@ -470,7 +472,7 @@ ${html}
           <div className="w-px h-6 bg-gray-200 mx-1"></div>
           <div className="flex items-center gap-1 mx-1">
             <div className="relative">
-              <div className="flex items-center p-1.5 hover:bg-gray-100 rounded" title="Text Color">
+              <div className="flex items-center p-1.5 hover:bg-gray-100 rounded" title={t('toolbar.textColor')}>
                 <Palette size={18} className="text-gray-600" />
               </div>
               <input
@@ -484,7 +486,7 @@ ${html}
               />
             </div>
             <div className="relative">
-              <div className="flex items-center p-1.5 hover:bg-gray-100 rounded" title="Background Color">
+              <div className="flex items-center p-1.5 hover:bg-gray-100 rounded" title={t('toolbar.backgroundColor')}>
                 <Highlighter size={18} className="text-yellow-500" />
               </div>
               <input
@@ -505,7 +507,7 @@ ${html}
                 else (editor.chain().focus() as any).unsetFontSize().run();
               }}
               value={editor.getAttributes('textStyle').fontSize || ''}
-              title="Font Size"
+              title={t('toolbar.fontSize')}
             >
               <option value="">Size</option>
               <option value="12px">12px</option>
@@ -525,7 +527,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             active={editor.isActive('heading', { level: 1 })}
-            title="Heading 1"
+            title={t('toolbar.heading1')}
           >
             <Heading1 size={18} />
           </Button>
@@ -533,7 +535,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive('heading', { level: 2 })}
-            title="Heading 2"
+            title={t('toolbar.heading2')}
           >
             <Heading2 size={18} />
           </Button>
@@ -541,7 +543,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
             active={editor.isActive('heading', { level: 3 })}
-            title="Heading 3"
+            title={t('toolbar.heading3')}
           >
             <Heading3 size={18} />
           </Button>
@@ -552,7 +554,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive('bulletList')}
-            title="Bullet List"
+            title={t('toolbar.bulletList')}
           >
             <List size={18} />
           </Button>
@@ -560,7 +562,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive('orderedList')}
-            title="Ordered List"
+            title={t('toolbar.orderedList')}
           >
             <ListOrdered size={18} />
           </Button>
@@ -568,7 +570,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
             active={editor.isActive('codeBlock')}
-            title="Code Block"
+            title={t('toolbar.codeBlock')}
           >
             <Code size={18} />
           </Button>
@@ -576,7 +578,7 @@ ${html}
             variant="toolbar"
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             active={editor.isActive('blockquote')}
-            title="Blockquote"
+            title={t('toolbar.blockquote')}
           >
             <Quote size={18} />
           </Button>
@@ -586,7 +588,7 @@ ${html}
           <Button
             variant="toolbar"
             onClick={() => setImageDialogOpen(true)}
-            title="Insert Image"
+            title={t('toolbar.insertImage')}
           >
             <ImageIcon size={18} />
           </Button>
@@ -597,7 +599,7 @@ ${html}
               variant="toolbar"
               onClick={() => setTableMenuOpen(!tableMenuOpen)}
               active={editor.isActive('table') || tableMenuOpen}
-              title="Insert Table"
+              title={t('toolbar.insertTable')}
             >
               <TableIcon size={18} />
             </Button>
@@ -607,7 +609,7 @@ ${html}
                 <div className={`absolute left-0 top-full mt-1 p-3 rounded-lg shadow-xl z-50 ${darkMode ? 'bg-slate-700 border border-slate-600' : 'bg-white border border-gray-200'
                   }`}>
                   <div className={`text-xs mb-2 text-center ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                    Select table size
+                    {t('toolbar.selectTableSize')}
                   </div>
                   <div className="flex flex-col gap-1">
                     {[1, 2, 3, 4, 5].map((rows) => (
@@ -634,7 +636,7 @@ ${html}
                     ))}
                   </div>
                   <div className={`text-xs mt-2 text-center ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                    Click to insert
+                    {t('toolbar.clickToInsert')}
                   </div>
                 </div>
               </>
@@ -644,14 +646,14 @@ ${html}
             variant="toolbar"
             onClick={() => setLinkDialogOpen(true)}
             active={editor.isActive('link')}
-            title="Insert Link"
+            title={t('toolbar.insertLink')}
           >
             <LinkIcon size={18} />
           </Button>
           <Button
             variant="toolbar"
             onClick={() => editor.chain().focus().setHorizontalRule().run()}
-            title="Horizontal Rule"
+            title={t('toolbar.horizontalRule')}
           >
             <Minus size={18} />
           </Button>
@@ -663,18 +665,18 @@ ${html}
               onClick={() => viewMode === ViewMode.SPLIT && toggleViewMode()}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === ViewMode.EDITOR_ONLY ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              Editor
+              {t('toolbar.editor')}
             </button>
             <button
               onClick={() => viewMode !== ViewMode.SPLIT && toggleViewMode()}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${viewMode === ViewMode.SPLIT ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
-              Split
+              {t('toolbar.split')}
             </button>
           </div>
 
-          <Button variant="ghost" onClick={handleImport} className="gap-1.5 flex-shrink-0" title="Import .adoc">
-            <Upload size={16} /> Import
+          <Button variant="ghost" onClick={handleImport} className="gap-1.5 flex-shrink-0" title={t('toolbar.import')}>
+            <Upload size={16} /> {t('toolbar.import')}
           </Button>
 
           <div className="relative">
@@ -683,7 +685,7 @@ ${html}
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
               className="gap-2 flex-shrink-0"
             >
-              <Download size={16} /> Export <ChevronDown size={14} />
+              <Download size={16} /> {t('toolbar.export')} <ChevronDown size={14} />
             </Button>
             {exportMenuOpen && (
               <>
@@ -695,21 +697,21 @@ ${html}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                       }`}
                   >
-                    Export as .adoc
+                    {t('topBar.exportAdoc').replace('AsciiDoc', '.adoc')}
                   </button>
                   <button
                     onClick={handleExportHtml}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                       }`}
                   >
-                    Export as .html
+                    {t('topBar.exportHtml').replace('HTML', '.html')}
                   </button>
                   <button
                     onClick={handleExportZip}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                       }`}
                   >
-                    Export as .zip (with images)
+                    {t('topBar.exportZipImages')}
                   </button>
                   <button
                     onClick={() => {
@@ -719,7 +721,7 @@ ${html}
                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                       }`}
                   >
-                    Export as .pdf
+                    {t('topBar.exportPdf').replace('PDF', '.pdf')}
                   </button>
                 </div>
               </>
@@ -731,7 +733,7 @@ ${html}
             <Button
               variant="toolbar"
               onClick={toggleDesktopSidebar}
-              title="Show Sidebar"
+              title={t('toolbar.showSidebar')}
               className="hidden md:flex"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -746,7 +748,7 @@ ${html}
               <Button
                 variant="toolbar"
                 onClick={() => setWidthMenuOpen(!widthMenuOpen)}
-                title="Editor Width"
+                title={t('toolbar.editorWidth')}
                 className="gap-1 text-xs"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -767,8 +769,8 @@ ${html}
                           setWidthMenuOpen(false);
                         }}
                         className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm ${editorWidth === w
-                            ? darkMode ? 'bg-slate-600 text-blue-400' : 'bg-blue-50 text-blue-600'
-                            : darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
+                          ? darkMode ? 'bg-slate-600 text-blue-400' : 'bg-blue-50 text-blue-600'
+                          : darkMode ? 'hover:bg-slate-600 text-slate-200' : 'hover:bg-gray-100 text-gray-700'
                           }`}
                       >
                         {w}%

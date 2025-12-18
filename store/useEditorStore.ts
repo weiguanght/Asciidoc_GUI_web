@@ -52,6 +52,11 @@ interface EditorState {
   isSaving: boolean;
   lastSavedAt: number | null;
 
+  // 模态框状态
+  isSettingsModalOpen: boolean;
+  isImportModalOpen: boolean;
+  isDiagnosticsModalOpen: boolean;
+
   // Actions
   setFiles: (files: FileItem[]) => void;
   setActiveFile: (id: string) => void;
@@ -90,6 +95,14 @@ interface EditorState {
   // 主题操作
   toggleDarkMode: () => void;
 
+  // 模态框操作
+  openSettingsModal: () => void;
+  closeSettingsModal: () => void;
+  openImportModal: () => void;
+  closeImportModal: () => void;
+  openDiagnosticsModal: () => void;
+  closeDiagnosticsModal: () => void;
+
   // 文件系统操作
   saveCurrentFile: () => Promise<boolean>;
   saveAsFile: () => Promise<boolean>;
@@ -120,6 +133,9 @@ export const useEditorStore = create<EditorState>()(
       darkMode: false,
       isSaving: false,
       lastSavedAt: null,
+      isSettingsModalOpen: false,
+      isImportModalOpen: false,
+      isDiagnosticsModalOpen: false,
 
       setFiles: (files) => set({ files }),
 
@@ -267,6 +283,14 @@ export const useEditorStore = create<EditorState>()(
       closeImageManager: () => set({ imageManagerOpen: false }),
 
       toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+
+      // 模态框操作
+      openSettingsModal: () => set({ isSettingsModalOpen: true }),
+      closeSettingsModal: () => set({ isSettingsModalOpen: false }),
+      openImportModal: () => set({ isImportModalOpen: true }),
+      closeImportModal: () => set({ isImportModalOpen: false }),
+      openDiagnosticsModal: () => set({ isDiagnosticsModalOpen: true }),
+      closeDiagnosticsModal: () => set({ isDiagnosticsModalOpen: false }),
 
       // 文件系统操作
       saveCurrentFile: async () => {

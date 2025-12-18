@@ -2,10 +2,13 @@
  * BlockWrapper - 块级节点包装组件
  * 
  * 功能：
- * - 显示拖拽手柄 (Six-dot Grip)
+ * - 显示拖拽手柄 (Six-dot Grip) - 仅作为视觉提示
  * - 显示添加按钮 (+)
- * - 支持块级拖拽排序
  * - Notion 风格的块交互
+ * 
+ * 注意：Tiptap/ProseMirror 的块拖拽需要通过 schema 和 NodeView 实现，
+ * 原生 HTML5 拖拽会导致 block ID 被当作文本插入。
+ * 本组件的拖拽手柄目前仅作为视觉提示，点击时打开上下文菜单。
  */
 
 import React, { useState, useCallback } from 'react';
@@ -26,7 +29,7 @@ export interface BlockWrapperProps {
     onOpenMenu?: (blockId: string, event: React.MouseEvent) => void;
     /** 是否选中 */
     isSelected?: boolean;
-    /** 拖拽开始的回调 */
+    /** 拖拽开始的回调 (已禁用原生拖拽) */
     onDragStart?: (blockId: string, event: React.DragEvent) => void;
 }
 
@@ -40,23 +43,8 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
     onAddBlock,
     onOpenMenu,
     isSelected = false,
-    onDragStart,
 }) => {
     const [isHovered, setIsHovered] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
-
-    // 处理拖拽开始
-    const handleDragStart = useCallback((event: React.DragEvent) => {
-        setIsDragging(true);
-        event.dataTransfer.setData('text/plain', blockId);
-        event.dataTransfer.effectAllowed = 'move';
-        onDragStart?.(blockId, event);
-    }, [blockId, onDragStart]);
-
-    // 处理拖拽结束
-    const handleDragEnd = useCallback(() => {
-        setIsDragging(false);
-    }, []);
 
     // 处理点击添加按钮
     const handleAddClick = useCallback((event: React.MouseEvent) => {
@@ -75,7 +63,6 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
             className={`
                 block-wrapper group relative
                 ${isSelected ? 'block-wrapper-selected' : ''}
-                ${isDragging ? 'block-wrapper-dragging' : ''}
             `}
             data-block-id={blockId}
             onMouseEnter={() => setIsHovered(true)}
@@ -100,17 +87,16 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
                     <Plus size={14} className="text-gray-400 dark:text-gray-500" />
                 </button>
 
-                {/* 拖拽手柄 */}
-                <div
-                    className="block-drag-handle p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 cursor-grab active:cursor-grabbing transition-colors"
-                    draggable
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
+                {/* 拖拽手柄 - 仅作为菜单触发器 */}
+                <button
+                    type="button"
+                    className="block-drag-handle p-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer transition-colors"
                     onClick={handleGripClick}
-                    title="拖拽移动 / 点击打开菜单"
+                    title="点击打开菜单"
+                    tabIndex={-1}
                 >
                     <GripVertical size={14} className="text-gray-400 dark:text-gray-500" />
-                </div>
+                </button>
             </div>
 
             {/* 块内容 */}

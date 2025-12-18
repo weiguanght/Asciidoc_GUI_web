@@ -481,3 +481,108 @@
         transform: translateY(0);
     }
 }
+
+/* ============ TaskList 样式 (Notion 风格) ============ */
+
+/* 任务列表容器 */
+ul[data-type="taskList"] {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* 任务项 */
+ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 4px 0;
+    position: relative;
+}
+
+/* 任务项标签（包含复选框） */
+ul[data-type="taskList"] li > label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+    cursor: pointer;
+}
+
+/* Notion 风格方形复选框 */
+ul[data-type="taskList"] li > label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #d1d5db;
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+}
+
+ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+    border-color: #9ca3af;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+/* 选中状态 */
+ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+/* 选中状态的勾选标记 */
+ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 4px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* 已完成任务的文本样式 */
+ul[data-type="taskList"] li[data-checked="true"] > div {
+    color: #9ca3af;
+    text-decoration: line-through;
+}
+
+/* 任务项内容区域 */
+ul[data-type="taskList"] li > div {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 嵌套任务列表 */
+ul[data-type="taskList"] ul[data-type="taskList"] {
+    margin-left: 24px;
+    margin-top: 4px;
+}
+
+/* 暗色模式 */
+.dark ul[data-type="taskList"] li > label input[type="checkbox"] {
+    border-color: #4b5563;
+}
+
+.dark ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+    border-color: #6b7280;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.dark ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.dark ul[data-type="taskList"] li[data-checked="true"] > div {
+    color: #6b7280;
+}

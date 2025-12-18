@@ -3,6 +3,9 @@ import { Sidebar } from './components/Sidebar';
 import { TiptapEditor } from './components/TiptapEditor';
 import { MobileHeader } from './components/MobileHeader';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { SettingsModal } from './components/SettingsModal';
+import { ImportExportModal } from './components/ImportExportModal';
+import { DiagnosticsModal } from './components/DiagnosticsModal';
 import { useEditorStore } from './store/useEditorStore';
 
 // Toast 通知组件
@@ -25,7 +28,7 @@ const SaveToast: React.FC<{ message: string; onClose: () => void }> = ({ message
 };
 
 function App() {
-  const { darkMode, saveCurrentFile, isSaving } = useEditorStore();
+  const { darkMode, saveCurrentFile, isSaving, desktopSidebarVisible } = useEditorStore();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // 全局快捷键监听
@@ -71,11 +74,18 @@ function App() {
       {/* 侧边栏 */}
       <Sidebar />
 
-      {/* 主内容区 */}
-      <main className={`flex-1 flex flex-col h-full overflow-hidden shadow-xl z-0 md:rounded-tl-2xl md:border-t md:border-l md:ml-[-1px] ${darkMode
-        ? 'bg-slate-850 border-slate-700'
-        : 'bg-white border-gray-200'
-        }`}>
+      {/* 主内容区 - 根据侧边栏状态调整布局 */}
+      <main
+        className={`
+          flex-1 flex flex-col h-full overflow-hidden shadow-xl z-0
+          transition-all duration-300 ease-in-out
+          ${desktopSidebarVisible
+            ? 'md:rounded-tl-2xl md:border-t md:border-l'
+            : 'md:rounded-none md:border-0'
+          }
+          ${darkMode ? 'bg-slate-850 border-slate-700' : 'bg-white border-gray-200'}
+        `}
+      >
         <TiptapEditor />
       </main>
 
@@ -96,6 +106,11 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <SettingsModal />
+      <ImportExportModal />
+      <DiagnosticsModal />
     </div>
   );
 }

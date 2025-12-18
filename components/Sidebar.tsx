@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { FileText, Upload, Plus, Search, X, Pencil, Trash2, Moon, Sun, MoreVertical, List, ChevronRight, Folder, FolderOpen, FolderPlus, Move, HardDrive, Save } from 'lucide-react';
+import { FileText, Upload, Plus, Search, X, Pencil, Trash2, Moon, Sun, MoreVertical, List, ChevronRight, Folder, FolderOpen, FolderPlus, Move, HardDrive, Save, Settings, HelpCircle, Download, PanelLeftClose } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
 import { Button } from './ui/Button';
 import { FileItem } from '../types';
@@ -54,7 +54,10 @@ export const Sidebar: React.FC = () => {
     darkMode,
     toggleDarkMode,
     sourceContent,
-    setHighlightLine
+    setHighlightLine,
+    openSettingsModal,
+    openImportModal,
+    openDiagnosticsModal,
   } = useEditorStore();
 
   const [activeTab, setActiveTab] = useState<'files' | 'outline'>('files');
@@ -191,14 +194,15 @@ export const Sidebar: React.FC = () => {
         className={`
           sidebar-container
           ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}
-          border-r flex flex-col h-full flex-shrink-0 z-50
-          w-72 md:w-64
+          border-r flex flex-col h-full z-50 overflow-hidden
           fixed md:relative
           top-0 left-0 bottom-0
-          transform transition-all duration-300 ease-in-out
-          ${sidebarVisible ? 'translate-x-0' : '-translate-x-full'}
-          ${!sidebarVisible && desktopSidebarVisible ? 'md:translate-x-0' : ''}
-          ${!desktopSidebarVisible ? 'md:-translate-x-full md:absolute' : ''}
+          transition-all duration-300 ease-in-out
+          ${sidebarVisible ? 'w-72 translate-x-0' : 'w-72 -translate-x-full'}
+          ${desktopSidebarVisible
+            ? 'md:w-64 md:translate-x-0 md:flex-shrink-0'
+            : 'md:w-0 md:translate-x-0 md:border-0 md:min-w-0'
+          }
         `}
       >
         {/* 头部 */}
@@ -214,7 +218,7 @@ export const Sidebar: React.FC = () => {
               aria-label="Hide sidebar"
               title="Hide sidebar"
             >
-              <X size={18} className={darkMode ? 'text-slate-400' : 'text-gray-500'} />
+              <PanelLeftClose size={18} className={darkMode ? 'text-slate-400' : 'text-gray-500'} />
             </button>
             <button
               onClick={closeSidebar}
@@ -477,70 +481,71 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
 
-        {/* 底部操作区 */}
-        <div className={`p-4 border-t space-y-2 ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-gray-200 bg-gray-50/50'}`}>
-          {/* 深色模式切换 */}
+        {/* 底部操作区 - Notion 风格 */}
+        <div className={`border-t ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+          {/* 新建文档 */}
           <button
-            onClick={toggleDarkMode}
-            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${darkMode
-              ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            onClick={() => createFile(`Untitled ${files.length + 1}`)}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode
+              ? 'text-slate-300 hover:bg-slate-700'
+              : 'text-gray-700 hover:bg-gray-100'
               }`}
           >
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
+            <Plus size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
+            New Document
           </button>
 
-          <Button
-            variant="secondary"
-            className={`w-full justify-start gap-2 text-xs ${darkMode ? 'bg-slate-700 text-slate-200 hover:bg-slate-600 border-slate-600' : ''}`}
-            onClick={() => createFile(`Untitled ${files.length + 1}`)}
-          >
-            <Plus size={14} /> New Document
-          </Button>
+          {/* 分隔线 */}
+          <div className={`h-px mx-3 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`} />
 
-          {/* 本地文件操作 */}
-          <Button
-            variant="ghost"
-            className={`w-full justify-start gap-2 text-xs ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200' : 'text-gray-500'}`}
-            onClick={async () => {
-              try {
-                const result = await openLocalFile();
-                if (result) {
-                  importFile(result.name, result.content);
-                }
-              } catch (error) {
-                console.error('Open file error:', error);
-              }
-            }}
+          {/* Import */}
+          <button
+            onClick={openImportModal}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode
+              ? 'text-slate-300 hover:bg-slate-700'
+              : 'text-gray-700 hover:bg-gray-100'
+              }`}
           >
-            <HardDrive size={14} /> Open Local File
-          </Button>
+            <Download size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
+            Import
+          </button>
 
-          <Button
-            variant="ghost"
-            className={`w-full justify-start gap-2 text-xs ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200' : 'text-gray-500'}`}
-            onClick={async () => {
-              const activeFile = files.find(f => f.id === activeFileId);
-              if (activeFile) {
-                try {
-                  await saveLocalFileAs(activeFile.content, activeFile.name);
-                } catch (error) {
-                  console.error('Save file error:', error);
-                }
-              }
-            }}
+          {/* Settings */}
+          <button
+            onClick={openSettingsModal}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode
+              ? 'text-slate-300 hover:bg-slate-700'
+              : 'text-gray-700 hover:bg-gray-100'
+              }`}
           >
-            <Save size={14} /> Save to Local
-          </Button>
+            <Settings size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
+            Settings
+          </button>
 
-          <Button
-            variant="ghost"
-            className={`w-full justify-start gap-2 text-xs ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200' : 'text-gray-500'}`}
-            onClick={handleImport}
+          {/* Help & Logs */}
+          <button
+            onClick={openDiagnosticsModal}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode
+              ? 'text-slate-300 hover:bg-slate-700'
+              : 'text-gray-700 hover:bg-gray-100'
+              }`}
           >
-            <Upload size={14} /> Import .adoc .html
-          </Button>
+            <HelpCircle size={16} className={darkMode ? 'text-slate-400' : 'text-gray-400'} />
+            Help & Logs
+          </button>
+
+          {/* 深色模式切换 */}
+          <div className={`mx-3 my-2 h-px ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`} />
+          <button
+            onClick={toggleDarkMode}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${darkMode
+              ? 'text-slate-300 hover:bg-slate-700'
+              : 'text-gray-700 hover:bg-gray-100'
+              }`}
+          >
+            {darkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-400" />}
+            {darkMode ? 'Light Mode' : 'Dark Mode'}
+          </button>
         </div>
       </aside>
 

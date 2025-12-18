@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useEditor, EditorContent, Extension } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -12,6 +11,8 @@ import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { TableCaption } from '../extensions/TableCaption';
@@ -19,12 +20,23 @@ import { AdmonitionNode } from '../extensions/admonition-node';
 import { IncludeNode } from '../extensions/include-node';
 import { SlashCommands } from '../extensions/slash-commands';
 import { UniqueIdExtension } from '../extensions/UniqueId';
+import {
+  StarterKitWithoutBlockNodes,
+  ParagraphWithHandle,
+  HeadingWithHandle,
+  BulletListWithHandle,
+  OrderedListWithHandle,
+  BlockquoteWithHandle,
+  CodeBlockWithHandle,
+  HorizontalRuleWithHandle,
+} from '../extensions/BlockWrapperExtension';
 import { useEditorStore } from '../store/useEditorStore';
 import { jsonToAdoc, adocToHtml } from '../lib/asciidoc';
 import { renderMermaidDiagrams } from '../lib/asciidoctor-renderer';
 import { convertToAdoc } from '../lib/paste-converter';
 import { sanitizeHtml } from '../lib/html-sanitizer';
-import { Toolbar } from './Toolbar';
+import { TopBar } from './TopBar';
+import { BubbleMenuComponent } from './BubbleMenuComponent';
 import { SourceEditor } from './SourceEditor';
 import { ContextMenu } from './ContextMenu';
 import { ViewMode } from '../types';
@@ -95,8 +107,15 @@ export const TiptapEditor: React.FC = () => {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKitWithoutBlockNodes,
       UniqueIdExtension,
+      ParagraphWithHandle,
+      HeadingWithHandle,
+      BulletListWithHandle,
+      OrderedListWithHandle,
+      BlockquoteWithHandle,
+      CodeBlockWithHandle,
+      HorizontalRuleWithHandle,
       Image,
       Table.configure({
         resizable: true,
@@ -112,6 +131,10 @@ export const TiptapEditor: React.FC = () => {
       AdmonitionNode,
       IncludeNode,
       SlashCommands,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
       Highlight.configure({
         multicolor: true,
       }),
@@ -427,7 +450,7 @@ export const TiptapEditor: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-full ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
-      <Toolbar editor={editor} />
+      <TopBar editor={editor} />
 
       <div className={`flex-1 flex overflow-hidden ${viewMode === ViewMode.SPLIT ? 'flex-col md:flex-row' : ''}`}>
         {/* WYSIWYG Editor / Preview Pane */}
@@ -454,6 +477,7 @@ export const TiptapEditor: React.FC = () => {
               onClick={() => editor.chain().focus().run()}
             >
               <EditorContent editor={editor} />
+              <BubbleMenuComponent editor={editor} />
             </div>
           )}
         </div>
